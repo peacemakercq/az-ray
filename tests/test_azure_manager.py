@@ -1,0 +1,84 @@
+import pytest
+import asyncio
+from unittest.mock import Mock, AsyncMock
+from src.config import Config
+from src.azure_manager import AzureManager
+
+
+@pytest.fixture
+def mock_config():
+    """模拟配置"""
+    config = Mock(spec=Config)
+    config.azure_client_id = "test-client-id"
+    config.azure_client_secret = "test-client-secret"
+    config.azure_tenant_id = "test-tenant-id"
+    config.azure_subscription_id = "test-subscription-id"
+    config.azure_resource_group = "test-rg"
+    config.azure_location = "eastus"
+    config.v2ray_client_id = "550e8400-e29b-41d4-a716-446655440000"
+    config.storage_account_name = "teststore"
+    config.storage_file_share_name = "test-config"
+    config.storage_file_name = "config.json"
+    config.container_group_name = "test-container"
+    config.container_name = "v2ray"
+    config.container_image = "v2fly/v2fly-core:latest"
+    config.v2ray_port = 443
+    config.v2ray_path = "/v2ray"
+    config.get_unique_name = Mock(side_effect=lambda x: f"{x}-test")
+    return config
+
+
+@pytest.fixture
+def mock_azure_manager(mock_config):
+    """模拟Azure管理器"""
+    manager = AzureManager(mock_config)
+    manager.credential = Mock()
+    manager.resource_client = Mock()
+    manager.storage_client = Mock()
+    manager.container_client = Mock()
+    manager.storage_account_key = "test-key"
+    return manager
+
+
+class TestAzureManager:
+    """Azure管理器测试"""
+
+    @pytest.mark.asyncio
+    async def test_initialize(self, mock_config):
+        """测试初始化"""
+        manager = AzureManager(mock_config)
+        
+        # 模拟初始化过程
+        with pytest.raises(ValueError, match="需要提供AZURE_SUBSCRIPTION_ID"):
+            mock_config.azure_subscription_id = None
+            await manager.initialize()
+
+    @pytest.mark.asyncio
+    async def test_ensure_resources(self, mock_azure_manager):
+        """测试资源确保"""
+        # 模拟所有方法
+        mock_azure_manager._ensure_resource_group = AsyncMock()
+        mock_azure_manager._ensure_storage_account = AsyncMock()
+        mock_azure_manager._ensure_file_share = AsyncMock()
+        mock_azure_manager._ensure_v2ray_config = AsyncMock()
+        mock_azure_manager._ensure_container_instance = AsyncMock()
+        
+        await mock_azure_manager.ensure_resources()
+        
+        # 验证所有方法都被调用
+        mock_azure_manager._ensure_resource_group.assert_called_once()
+        mock_azure_manager._ensure_storage_account.assert_called_once()
+        mock_azure_manager._ensure_file_share.assert_called_once()
+        mock_azure_manager._ensure_v2ray_config.assert_called_once()
+        mock_azure_manager._ensure_container_instance.assert_called_once()
+
+    def test_generate_v2ray_config(self, mock_azure_manager):
+        """测试V2Ray配置生成"""
+        config = mock_azure_manager._generate_v2ray_config()
+        
+        assert "log" in config
+        assert "inbounds" in config
+        assert "outbounds" in config
+        assert config["inbounds"][0]["port"] == 443
+        assert config["inbounds"][0]["protocol"] == "vmess"
+        assert config["inbounds"][0]["settings"]["clients"][0]["id"] == "550e8400-e29b-41d4-a716-446655440000"

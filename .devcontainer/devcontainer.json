@@ -1,0 +1,54 @@
+{
+    "name": "AZ-Ray Development",
+    "build": {
+        "dockerfile": "Dockerfile.dev"
+    },
+    "features": {
+        "ghcr.io/devcontainers/features/git:1": {}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.black-formatter",
+                "ms-python.flake8",
+                "ms-python.mypy-type-checker",
+                "github.copilot",
+                "github.copilot-chat",
+                "mutantdino.resourcemonitor"
+            ],
+            "settings": {
+                "python.defaultInterpreterPath": "/usr/local/bin/python",
+                "python.formatting.provider": "black",
+                "python.linting.enabled": true,
+                "python.linting.flake8Enabled": true,
+                "python.linting.mypyEnabled": true,
+                "editor.formatOnSave": true,
+                "editor.codeActionsOnSave": {
+                    "source.organizeImports": "explicit"
+                },
+                "extensions.autoUpdate": false,
+                "github.copilot.advanced": {
+                    "debug.overrideEngine": "codex"
+                }
+            }
+        }
+    },
+    "forwardPorts": [
+        1080
+    ],
+    "portsAttributes": {
+        "1080": {
+            "label": "SOCKS5 Proxy",
+            "onAutoForward": "notify"
+        }
+    },
+    "postCreateCommand": "pip install -r requirements.txt && pip install -e .",
+    "mounts": [
+        "source=${localWorkspaceFolder}/.env,target=/app/.env,type=bind,consistency=cached"
+    ],
+    "containerEnv": {
+        "PYTHONPATH": "/app"
+    },
+    "remoteUser": "vscode"
+}

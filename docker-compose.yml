@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  az-ray:
+    build: .
+    container_name: az-ray
+    ports:
+      - "1080:1080"
+    environment:
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - V2RAY_CLIENT_ID=${V2RAY_CLIENT_ID}
+      - AZURE_RESOURCE_GROUP=${AZURE_RESOURCE_GROUP:-az-ray-rg}
+      - AZURE_LOCATION=${AZURE_LOCATION:-southeastasia}
+      - SOCKS5_PORT=${SOCKS5_PORT:-1080}
+      - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL:-600}
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - az-ray-network
+
+networks:
+  az-ray-network:
+    driver: bridge

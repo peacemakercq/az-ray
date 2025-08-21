@@ -1,0 +1,30 @@
+# 开发容器Dockerfile
+FROM mcr.microsoft.com/devcontainers/python:3.12
+
+# 安装额外的系统工具
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    curl \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装V2Ray（用于测试）
+RUN wget -O /tmp/v2ray.zip https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-64.zip \
+    && unzip /tmp/v2ray.zip -d /tmp/v2ray \
+    && mv /tmp/v2ray/v2ray /usr/local/bin/ \
+    && chmod +x /usr/local/bin/v2ray \
+    && rm -rf /tmp/v2ray*
+
+# 设置Python环境
+ENV PYTHONPATH=/app
+WORKDIR /app
+
+# 预安装常用的开发依赖
+RUN pip install --upgrade pip \
+    && pip install \
+        pytest \
+        pytest-asyncio \
+        black \
+        flake8 \
+        mypy

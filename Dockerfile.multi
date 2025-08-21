@@ -1,0 +1,78 @@
+# 构建参数
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+# 多阶段构建 - Python环境
+FROM python:3.12-slim as python-base
+
+# 设置环境变量
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# 安装系统依赖
+RUN apt-get update && apt-get install -y \
+    wget \
+    unzip \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# V2Ray下载阶段
+FROM python-base as v2ray-downloader
+
+# 根据平台下载V2Ray
+RUN if [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
+        V2RAY_ARCH="64"; \
+    elif [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
+        V2RAY_ARCH="arm64-v8a"; \
+    else \
+        V2RAY_ARCH="64"; \
+    fi && \
+    wget -O /tmp/v2ray.zip "https://github.com/v2fly/v2ray-core/releases/latest/download/v2ray-linux-${V2RAY_ARCH}.zip" && \
+    unzip /tmp/v2ray.zip -d /tmp/v2ray && \
+    mv /tmp/v2ray/v2ray /usr/local/bin/ && \
+    chmod +x /usr/local/bin/v2ray && \
+    rm -rf /tmp/v2ray*
+
+# 最终镜像
+FROM python-base as final
+
+# 从下载阶段复制V2Ray
+COPY --from=v2ray-downloader /usr/local/bin/v2ray /usr/local/bin/v2ray
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制requirements并安装Python依赖
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY src/ ./src/
+
+# 创建非root用户
+RUN useradd -m -u 1000 azray && \
+    chown -R azray:azray /app && \
+    mkdir -p /app/logs && \
+    chown azray:azray /app/logs
+
+# 切换到非root用户
+USER azray
+
+# 暴露SOCKS5端口
+EXPOSE 1080
+
+# 添加标签
+LABEL maintainer="AZ-Ray Development Team" \
+      version="1.0.0" \
+      description="Azure V2Ray Proxy Solution"
+
+# 健康检查
+HEALTHCHECK --interval=60s --timeout=30s --start-period=60s --retries=3 \
+    CMD curl -f --connect-timeout 10 --socks5 127.0.0.1:1080 https://www.google.com || exit 1
+
+# 启动应用
+CMD ["python", "-m", "src.main"]

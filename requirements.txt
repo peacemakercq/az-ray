@@ -1,0 +1,15 @@
+# Python dependencies
+azure-identity>=1.15.0
+azure-mgmt-containerinstance>=10.1.0
+azure-mgmt-resource>=23.0.1
+azure-mgmt-storage>=21.0.0
+azure-storage-file-share>=12.14.1
+aiohttp>=3.9.0
+aiohttp-socks>=0.8.0
+
+# Development dependencies (for dev container)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+black>=23.0.0
+flake8>=6.0.0
+mypy>=1.5.0
