@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 class AzRayApp:
     """主应用程序类"""
 
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, domain_file: Optional[str] = None):
+        self.config = Config(domain_file=domain_file)
         self.azure_manager: Optional[AzureManager] = None
         self.v2ray_manager: Optional[V2RayManager] = None
         self.health_monitor: Optional[HealthMonitor] = None

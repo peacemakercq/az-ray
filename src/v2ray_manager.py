@@ -89,7 +89,7 @@ class V2RayManager:
                 "rules": [
                     {
                         "type": "field",
-                        "domain": self.config.blocked_domains,
+                        "domain": self.config.domain_list,
                         "outboundTag": "proxy"
                     },
                     {

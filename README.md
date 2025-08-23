@@ -82,7 +82,43 @@ pip install -r requirements.txt
 
 # 运行应用
 python __main__.py
+
+# 使用自定义域名文件
+python __main__.py --domainfile domains.txt
+
+# 启用详细日志
+python __main__.py -v
+
+# 重新创建Azure资源
+python __main__.py --recreate
 ```
+
+### 自定义域名列表
+
+默认情况下，系统会代理一些常见的被墙网站。你也可以通过域名文件自定义需要代理的域名列表：
+
+1. **创建域名文件**（如 `domains.txt`）：
+   ```
+   # 这是注释行
+   google.com
+   youtube.com
+   facebook.com
+   
+   # 你也可以添加更多域名
+   github.com
+   twitter.com
+   ```
+
+2. **使用域名文件启动**：
+   ```bash
+   python __main__.py --domainfile domains.txt
+   ```
+
+**域名文件格式说明：**
+- 每行一个域名
+- 以 `#` 开头的行为注释行
+- 空行会被忽略
+- 无效格式的域名会被跳过并记录警告
 
 ## 配置路由器
 

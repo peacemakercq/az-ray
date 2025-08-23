@@ -1,0 +1,30 @@
+# 示例域名文件
+# 每行一个域名，以#开头的行为注释行
+
+# Google 服务
+google.com
+youtube.com
+gmail.com
+blogspot.com
+
+# 社交媒体
+facebook.com
+twitter.com
+instagram.com
+pinterest.com
+tumblr.com
+reddit.com
+
+# 其他服务
+github.com
+wikipedia.org
+dropbox.com
+vimeo.com
+dailymotion.com
+wordpress.com
+flickr.com
+imgur.com
+
+# 短链接服务
+t.co
+bit.ly

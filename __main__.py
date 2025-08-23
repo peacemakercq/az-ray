@@ -8,6 +8,7 @@ import logging
 import os
 import asyncio
 from pathlib import Path
+from typing import Optional
 
 # 添加src目录到Python路径
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -39,9 +40,9 @@ def setup_logging(verbose: bool = False):
     )
 
 
-async def run_app():
+async def run_app(domain_file: Optional[str] = None):
     """运行应用的异步函数"""
-    app = AzRayApp()
+    app = AzRayApp(domain_file=domain_file)
 
     try:
         # 设置信号处理
@@ -75,6 +76,11 @@ def main():
         action="store_true",
         help="删除现有资源组并重新创建所有资源"
     )
+    parser.add_argument(
+        "--domainfile",
+        type=str,
+        help="指定包含域名列表的文件路径，每行一个域名"
+    )
 
     args = parser.parse_args()
 
@@ -87,7 +93,7 @@ def main():
 
     # 运行应用
     try:
-        asyncio.run(run_app())
+        asyncio.run(run_app(domain_file=args.domainfile))
     except KeyboardInterrupt:
         logging.info("收到中断信号，正在退出...")
         sys.exit(0)
