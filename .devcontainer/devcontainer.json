@@ -43,7 +43,7 @@
             "onAutoForward": "notify"
         }
     },
-    "postCreateCommand": "pip install -r requirements.txt && pip install -e .",
+    "postCreateCommand": "pip install -r requirements.txt",
     "mounts": [
         "source=${localWorkspaceFolder}/.env,target=/app/.env,type=bind,consistency=cached"
     ],

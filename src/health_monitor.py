@@ -15,8 +15,9 @@ logger = logging.getLogger(__name__)
 class HealthMonitor:
     """健康监控器"""
 
-    def __init__(self, config: Config, azure_manager: AzureManager,
-                 v2ray_manager: V2RayManager):
+    def __init__(
+        self, config: Config, azure_manager: AzureManager, v2ray_manager: V2RayManager
+    ):
         self.config = config
         self.azure_manager = azure_manager
         self.v2ray_manager = v2ray_manager
@@ -32,7 +33,9 @@ class HealthMonitor:
             logger.warning("健康监控已在运行")
             return
 
-        logger.info(f"正在启动健康监控，检查间隔: {self.config.health_check_interval}秒")
+        logger.info(
+            f"正在启动健康监控，检查间隔: {self.config.health_check_interval}秒"
+        )
         self.running = True
         self.monitor_task = asyncio.create_task(self._monitor_loop())
 
@@ -81,7 +84,7 @@ class HealthMonitor:
         connection_ok = await self._test_proxy_connection()
 
         if connection_ok:
-            logger.info("健康检查通过")
+            logger.debug("健康检查通过")
             self.consecutive_failures = 0
         else:
             self.consecutive_failures += 1
@@ -105,8 +108,7 @@ class HealthMonitor:
             timeout = aiohttp.ClientTimeout(total=30)
 
             async with aiohttp.ClientSession(
-                connector=connector,
-                timeout=timeout
+                connector=connector, timeout=timeout
             ) as session:
                 # 尝试访问Google
                 async with session.get("https://www.google.com") as response:
@@ -150,5 +152,5 @@ class HealthMonitor:
             "running": self.running,
             "last_check_time": self.last_check_time,
             "consecutive_failures": self.consecutive_failures,
-            "v2ray_running": self.v2ray_manager.is_running()
+            "v2ray_running": self.v2ray_manager.is_running(),
         }
