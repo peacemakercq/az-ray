@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import signal
-import sys
 from typing import Optional
 
 from .azure_manager import AzureManager
@@ -9,15 +8,6 @@ from .v2ray_manager import V2RayManager
 from .health_monitor import HealthMonitor
 from .config import Config
 from .file_watcher import FileWatcher
-
-# 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
 
 logger = logging.getLogger(__name__)
 
