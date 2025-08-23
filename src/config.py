@@ -79,6 +79,7 @@ class Config:
             "twitter.com",
             "instagram.com",
             "github.com",
+            "docker.com",
             "gmail.com",
             "blogspot.com",
             "wikipedia.org",
