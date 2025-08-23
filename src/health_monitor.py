@@ -71,7 +71,7 @@ class HealthMonitor:
 
     async def _perform_health_check(self):
         """执行健康检查"""
-        logger.info("正在执行健康检查...")
+        logger.debug("正在执行健康检查...")
         self.last_check_time = time.time()
 
         # 检查本地V2Ray是否运行

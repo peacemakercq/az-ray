@@ -47,12 +47,17 @@
    AZURE_LOCATION=southeastasia
    SOCKS5_PORT=1080
    HEALTH_CHECK_INTERVAL=600
+   DOMAIN_FILE=/app/config/domains.txt  # 可选：自定义域名文件
    ```
 
    **存储空间:**
-   - 添加文件夹挂载
+   - 添加文件夹挂载（日志）
    - 主机路径: `/volume1/docker/az-ray/logs`
    - 容器路径: `/app/logs`
+   
+   - 添加文件夹挂载（配置，可选）
+   - 主机路径: `/volume1/docker/az-ray/config`
+   - 容器路径: `/app/config`
 
 5. **启动容器**
    - 点击"完成"创建容器
@@ -83,10 +88,10 @@
    AZURE_TENANT_ID=your_azure_tenant_id
    AZURE_SUBSCRIPTION_ID=your_azure_subscription_id
    V2RAY_CLIENT_ID=your_v2ray_uuid
-   AZURE_RESOURCE_GROUP=az-ray-rg
    AZURE_LOCATION=southeastasia
    SOCKS5_PORT=1080
    HEALTH_CHECK_INTERVAL=600
+   DOMAIN_FILE=/app/config/domains.txt
    ```
 
 4. **创建docker-compose.yml**
@@ -114,15 +119,87 @@
          - AZURE_LOCATION=${AZURE_LOCATION}
          - SOCKS5_PORT=${SOCKS5_PORT}
          - HEALTH_CHECK_INTERVAL=${HEALTH_CHECK_INTERVAL}
+         - DOMAIN_FILE=${DOMAIN_FILE}
        restart: unless-stopped
        volumes:
          - ./logs:/app/logs
+         - ./config:/app/config  # 用于存放自定义域名文件
    ```
 
 5. **启动服务**
    ```bash
    sudo docker-compose up -d
    ```
+
+## 自定义域名列表
+
+默认情况下，系统会代理常见的被墙网站。你可以通过自定义域名文件来添加或修改需要代理的域名列表。
+
+### 创建域名文件
+
+1. **创建配置目录**
+   ```bash
+   sudo mkdir -p /volume1/docker/az-ray/config
+   ```
+
+2. **创建域名文件**
+   ```bash
+   sudo nano /volume1/docker/az-ray/config/domains.txt
+   ```
+
+3. **编辑域名文件内容**
+   ```txt
+   # 自定义域名文件
+   # 每行一个域名，以#开头的行为注释行
+   
+   # Google 服务
+   google.com
+   youtube.com
+   gmail.com
+   
+   # 社交媒体
+   facebook.com
+   twitter.com
+   instagram.com
+   
+   # 开发相关
+   github.com
+   stackoverflow.com
+   
+   # 其他服务
+   wikipedia.org
+   dropbox.com
+   ```
+
+### 配置Container Manager使用域名文件
+
+如果使用Container Manager GUI创建容器：
+
+1. **添加存储空间挂载**
+   - 主机路径: `/volume1/docker/az-ray/config`
+   - 容器路径: `/app/config`
+
+2. **添加环境变量**
+   - 变量名: `DOMAIN_FILE`
+   - 值: `/app/config/domains.txt`
+
+### 域名文件格式说明
+
+- **每行一个域名**：如 `google.com`
+- **注释行**：以 `#` 开头的行会被忽略
+- **空行**：空行会被忽略
+- **域名验证**：无效格式的域名会被跳过并记录警告
+- **追加模式**：文件中的域名会**追加**到默认域名列表中
+
+### 重启生效
+
+修改域名文件后，需要重启容器：
+
+```bash
+sudo docker restart az-ray
+```
+
+或通过Container Manager界面重启容器。
 
 ## 网络配置
 
@@ -199,9 +276,16 @@ sudo docker-compose up -d
    - 调整 `HEALTH_CHECK_INTERVAL` 降低检查频率
    - 选择更近的Azure区域
 
+4. **域名文件相关问题**
+   - 确认域名文件路径正确，容器内路径为 `/app/config/domains.txt`
+   - 检查域名文件格式，确保每行一个域名
+   - 查看容器日志确认域名文件是否成功加载
+   - 修改域名文件后需要重启容器生效
+
 ### 日志位置
 - 容器日志: Container Manager → 容器详情 → 日志
 - 应用日志: `/volume1/docker/az-ray/logs/`
+- 配置文件: `/volume1/docker/az-ray/config/`
 
 ### 联系支持
 如遇到问题，请访问项目GitHub页面提交Issue。
