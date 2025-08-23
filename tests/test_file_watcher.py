@@ -53,6 +53,52 @@ class TestFileWatcher:
                 os.unlink(temp_file)
 
     @pytest.mark.asyncio
+    async def test_file_watcher_async_callback(self):
+        """测试异步回调函数"""
+        # 创建临时文件
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+            f.write("initial content")
+            temp_file = f.name
+
+        try:
+            change_detected = asyncio.Event()
+            callback_executed = False
+            
+            async def async_on_change():
+                nonlocal callback_executed
+                await asyncio.sleep(0.1)  # 模拟异步操作
+                callback_executed = True
+                change_detected.set()
+
+            # 创建文件监控器（使用异步回调）
+            watcher = FileWatcher(temp_file, async_on_change)
+            
+            # 启动监控
+            await watcher.start()
+            
+            # 等待一下让监控器稳定
+            await asyncio.sleep(0.5)
+            
+            # 修改文件
+            with open(temp_file, 'w') as f:
+                f.write("modified content")
+            
+            # 等待变更检测
+            try:
+                await asyncio.wait_for(change_detected.wait(), timeout=5.0)
+                assert callback_executed, "异步回调函数被正确执行"
+            except asyncio.TimeoutError:
+                assert False, "异步回调未被检测到"
+            
+            # 停止监控
+            await watcher.stop()
+            
+        finally:
+            # 清理临时文件
+            if os.path.exists(temp_file):
+                os.unlink(temp_file)
+
+    @pytest.mark.asyncio
     async def test_file_watcher_nonexistent_file(self):
         """测试监控不存在的文件"""
         change_detected = False

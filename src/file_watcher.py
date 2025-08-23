@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import os
-from typing import Callable, Optional
+from typing import Callable, Union, Optional, Awaitable
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class FileWatcher:
     """文件变更监控器"""
     
-    def __init__(self, file_path: str, callback: Callable[[], None]):
+    def __init__(self, file_path: str, callback: Union[Callable[[], None], Callable[[], Awaitable[None]]]):
         self.file_path = file_path
         self.callback = callback
         self._running = False
@@ -54,7 +54,11 @@ class FileWatcher:
                         logger.info(f"检测到文件变更: {self.file_path}")
                         self._last_modified = current_modified
                         try:
-                            await asyncio.to_thread(self.callback)
+                            # 判断callback是否为async函数
+                            if asyncio.iscoroutinefunction(self.callback):
+                                await self.callback()
+                            else:
+                                await asyncio.to_thread(self.callback)
                         except Exception as e:
                             logger.error(f"处理文件变更回调失败: {e}")
                 else:

@@ -121,7 +121,7 @@ class AzRayApp:
 
         logger.info("AZ-Ray应用已停止")
 
-    def _on_domain_file_changed(self):
+    async def _on_domain_file_changed(self):
         """域名文件变更回调"""
         try:
             logger.info("检测到域名文件变更，正在重新加载...")
@@ -131,7 +131,7 @@ class AzRayApp:
             
             # 异步重启V2Ray（使用新的域名列表）
             if self.v2ray_manager:
-                asyncio.create_task(self.v2ray_manager.restart())
+                await self.v2ray_manager.restart()
                 
         except Exception as e:
             logger.error(f"处理域名文件变更失败: {e}")
