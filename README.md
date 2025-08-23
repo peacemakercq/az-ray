@@ -41,6 +41,9 @@ AZURE_RESOURCE_GROUP=az-ray-rg
 AZURE_LOCATION=southeastasia
 SOCKS5_PORT=1080
 HEALTH_CHECK_INTERVAL=600  # 秒
+
+# 域名文件路径（可选）
+DOMAIN_FILE=/path/to/domains.txt
 ```
 
 ## 快速开始
@@ -83,42 +86,45 @@ pip install -r requirements.txt
 # 运行应用
 python __main__.py
 
-# 使用自定义域名文件
-python __main__.py --domainfile domains.txt
-
 # 启用详细日志
 python __main__.py -v
 
 # 重新创建Azure资源
 python __main__.py --recreate
+
+# 使用自定义域名文件
+export DOMAIN_FILE=domains.txt
+python __main__.py
 ```
 
 ### 自定义域名列表
 
-默认情况下，系统会代理一些常见的被墙网站。你也可以通过域名文件自定义需要代理的域名列表：
+默认情况下，系统会代理一些常见的被墙网站。你也可以通过环境变量自定义需要代理的域名列表：
 
-1. **创建域名文件**（如 `domains.txt`）：
-   ```
-   # 这是注释行
-   google.com
-   youtube.com
-   facebook.com
-   
-   # 你也可以添加更多域名
-   github.com
-   twitter.com
-   ```
+#### 使用环境变量
 
-2. **使用域名文件启动**：
-   ```bash
-   python __main__.py --domainfile domains.txt
-   ```
+```bash
+export DOMAIN_FILE=/path/to/domains.txt
+python __main__.py
+```
+
+#### 在Docker中使用
+
+```bash
+docker run -d \
+  --name az-ray \
+  -p 1080:1080 \
+  -e DOMAIN_FILE=/app/domains.txt \
+  -v /host/path/domains.txt:/app/domains.txt \
+  your_dockerhub_username/az-ray:latest
+```
 
 **域名文件格式说明：**
 - 每行一个域名
 - 以 `#` 开头的行为注释行
 - 空行会被忽略
 - 无效格式的域名会被跳过并记录警告
+- 文件中的域名会**追加**到默认域名列表中
 
 ## 配置路由器
 

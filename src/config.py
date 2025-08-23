@@ -40,9 +40,9 @@ class Config:
     # 额外转发域名文件路径
     domain_file: Optional[str] = None
 
-    def __init__(self, domain_file: Optional[str] = None):
+    def __init__(self):
         # 存储域名文件路径
-        self.domain_file = domain_file
+        self.domain_file = os.getenv("DOMAIN_FILE")
         
         # 从环境变量读取必需配置
         self.azure_client_id = self._get_env_required("AZURE_CLIENT_ID")
@@ -52,7 +52,7 @@ class Config:
         self.v2ray_client_id = self._get_env_required("V2RAY_CLIENT_ID")
 
         # 可选配置
-        self.azure_subscription_id = self._get_env_required("AZURE_SUBSCRIPTION_ID")
+        self.azure_subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
         self.azure_resource_group = os.getenv("AZURE_RESOURCE_GROUP", self.azure_resource_group)
         self.azure_location = os.getenv("AZURE_LOCATION", self.azure_location)
 
