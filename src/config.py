@@ -31,12 +31,12 @@ class Config:
     storage_file_name: str = "config.json"
 
     # Azure容器实例配置
-    container_group_name: str = "az-ray-v2ray"
-    container_name: str = "v2ray"
+    container_group_name: str = "azraycg"
+    container_name: str = "azrayci"
     container_image: str = "v2fly/v2fly-core:latest"
 
     # 被墙域名列表
-    blocked_domains: list = None
+    blocked_domains: Optional[list[str]] = None
 
     def __init__(self):
         # 从环境变量读取必需配置

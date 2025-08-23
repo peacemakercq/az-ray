@@ -28,6 +28,9 @@ class AzureManager:
         """初始化Azure客户端"""
         logger.info("正在初始化Azure客户端...")
 
+        # 抑制Azure SDK的详细日志
+        self._suppress_azure_logs()
+
         # 创建凭据
         self.credential = ClientSecretCredential(
             tenant_id=self.config.azure_tenant_id,
@@ -55,6 +58,33 @@ class AzureManager:
         )
 
         logger.info("Azure客户端初始化完成")
+
+    @staticmethod
+    def _suppress_azure_logs():
+        """抑制Azure SDK的详细日志"""
+        # Azure Core HTTP日志
+        logging.getLogger(
+            'azure.core.pipeline.policies.http_logging_policy'
+        ).setLevel(logging.WARNING)
+
+        # Azure Identity日志
+        logging.getLogger('azure.identity').setLevel(logging.WARNING)
+
+        # Azure管理客户端日志
+        logging.getLogger('azure.mgmt').setLevel(logging.WARNING)
+
+        # Azure存储日志
+        logging.getLogger('azure.storage').setLevel(logging.WARNING)
+
+        # urllib3日志（Azure SDK内部使用）
+        logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+        # Azure Core日志
+        logging.getLogger('azure.core').setLevel(logging.WARNING)
+        logging.getLogger('urllib3').setLevel(logging.WARNING)
+
+        # Azure Core日志
+        logging.getLogger('azure.core').setLevel(logging.WARNING)
 
     async def ensure_resources(self):
         """确保所有必需的Azure资源存在"""
