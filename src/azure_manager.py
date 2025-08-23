@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from typing import Optional, Dict, Any
 from azure.identity import ClientSecretCredential
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
@@ -90,6 +91,10 @@ class AzureManager:
         """确保所有必需的Azure资源存在"""
         logger.info("正在检查Azure资源...")
 
+        # 如果指定了重新创建选项，先删除现有资源组
+        if os.getenv("RECREATE_RESOURCES") == "true":
+            await self._clean_existing_resources()
+
         # 确保资源组存在
         await self._ensure_resource_group()
 
@@ -106,6 +111,31 @@ class AzureManager:
         await self._ensure_container_instance()
 
         logger.info("所有Azure资源检查完成")
+
+    async def _clean_existing_resources(self):
+        """删除现有的资源组及其所有资源（用于重新创建）"""
+        try:
+            # 检查资源组是否存在
+            self.resource_client.resource_groups.get(
+                self.config.azure_resource_group)
+            
+            logger.warning(f"正在删除资源组 {self.config.azure_resource_group} "
+                           f"及其所有资源...")
+            
+            # 删除资源组（这会自动删除其中的所有资源）
+            poller = self.resource_client.resource_groups.begin_delete(
+                self.config.azure_resource_group
+            )
+            
+            logger.info("等待资源组删除完成...")
+            poller.wait()
+            logger.info(f"资源组 {self.config.azure_resource_group} 删除完成")
+            
+        except ResourceNotFoundError:
+            logger.info(f"资源组 {self.config.azure_resource_group} 不存在，无需删除")
+        except Exception as e:
+            logger.error(f"删除资源组失败: {e}")
+            raise
 
     async def _ensure_resource_group(self):
         """确保资源组存在"""

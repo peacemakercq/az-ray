@@ -71,9 +71,9 @@ def main():
         help="启用详细日志输出"
     )
     parser.add_argument(
-        "--dry-run",
+        "--recreate",
         action="store_true",
-        help="dry run模式，不执行实际操作"
+        help="删除现有资源组并重新创建所有资源"
     )
 
     args = parser.parse_args()
@@ -82,8 +82,8 @@ def main():
     setup_logging(args.verbose)
 
     # 设置环境变量（如果需要）
-    if args.dry_run:
-        os.environ["DRY_RUN"] = "true"
+    if args.recreate:
+        os.environ["RECREATE_RESOURCES"] = "true"
 
     # 运行应用
     try:
