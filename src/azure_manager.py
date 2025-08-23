@@ -426,22 +426,3 @@ class AzureManager:
             return container_group.ip_address.fqdn if container_group.ip_address else None
         except Exception:
             return None
-
-    async def get_container_ip_info(self) -> Dict[str, Optional[str]]:
-        """获取容器的IP信息"""
-        try:
-            container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group,
-                self.config.container_group_name
-            )
-            if container_group.ip_address:
-                return {
-                    "ip": container_group.ip_address.ip,
-                    "fqdn": container_group.ip_address.fqdn,
-                    "dns_name_label": getattr(
-                        container_group.ip_address, 'dns_name_label', None
-                    )
-                }
-            return {"ip": None, "fqdn": None, "dns_name_label": None}
-        except Exception:
-            return {"ip": None, "fqdn": None, "dns_name_label": None}

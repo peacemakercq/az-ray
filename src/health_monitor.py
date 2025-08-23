@@ -3,6 +3,7 @@ import logging
 import aiohttp
 import time
 from typing import Optional
+from aiohttp_socks import ProxyConnector
 
 from .config import Config
 from .azure_manager import AzureManager
@@ -97,7 +98,7 @@ class HealthMonitor:
         """测试代理连接"""
         try:
             # 配置SOCKS5代理
-            connector = aiohttp.SocksConnector.from_url(
+            connector = ProxyConnector.from_url(
                 f"socks5://127.0.0.1:{self.config.socks5_port}"
             )
 
