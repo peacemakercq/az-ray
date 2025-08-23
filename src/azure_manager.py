@@ -37,7 +37,7 @@ class AzureManager:
         self.credential = ClientSecretCredential(
             tenant_id=self.config.azure_tenant_id,
             client_id=self.config.azure_client_id,
-            client_secret=self.config.azure_client_secret
+            client_secret=self.config.azure_client_secret,
         )
 
         # 获取订阅ID（如果未提供则使用默认）
@@ -47,16 +47,13 @@ class AzureManager:
 
         # 初始化管理客户端
         self.resource_client = ResourceManagementClient(
-            self.credential,
-            self.config.azure_subscription_id
+            self.credential, self.config.azure_subscription_id
         )
         self.storage_client = StorageManagementClient(
-            self.credential,
-            self.config.azure_subscription_id
+            self.credential, self.config.azure_subscription_id
         )
         self.container_client = ContainerInstanceManagementClient(
-            self.credential,
-            self.config.azure_subscription_id
+            self.credential, self.config.azure_subscription_id
         )
 
         logger.info("Azure客户端初始化完成")
@@ -65,28 +62,27 @@ class AzureManager:
     def _suppress_azure_logs():
         """抑制Azure SDK的详细日志"""
         # Azure Core HTTP日志
-        logging.getLogger(
-            'azure.core.pipeline.policies.http_logging_policy'
-        ).setLevel(logging.WARNING)
+        logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(
+            logging.WARNING
+        )
 
         # Azure Identity日志
-        logging.getLogger('azure.identity').setLevel(logging.WARNING)
+        logging.getLogger("azure.identity").setLevel(logging.WARNING)
 
         # Azure管理客户端日志
-        logging.getLogger('azure.mgmt').setLevel(logging.WARNING)
+        logging.getLogger("azure.mgmt").setLevel(logging.WARNING)
 
         # Azure存储日志
-        logging.getLogger('azure.storage').setLevel(logging.WARNING)
+        logging.getLogger("azure.storage").setLevel(logging.WARNING)
 
         # urllib3日志（Azure SDK内部使用）
-        logging.getLogger('urllib3').setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
         # Azure Core日志
-        logging.getLogger('azure.core').setLevel(logging.WARNING)
-        logging.getLogger('urllib3').setLevel(logging.WARNING)
+        logging.getLogger("azure.core").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
 
-        # Azure Core日志
-        logging.getLogger('azure.core').setLevel(logging.WARNING)
+        logging.getLogger("msal").setLevel(logging.WARNING)
 
     async def ensure_resources(self):
         """确保所有必需的Azure资源存在"""
@@ -117,11 +113,11 @@ class AzureManager:
         """删除现有的资源组及其所有资源（用于重新创建）"""
         try:
             # 检查资源组是否存在
-            self.resource_client.resource_groups.get(
-                self.config.azure_resource_group)
+            self.resource_client.resource_groups.get(self.config.azure_resource_group)
 
-            logger.warning(f"正在删除资源组 {self.config.azure_resource_group} "
-                           f"及其所有资源...")
+            logger.warning(
+                f"正在删除资源组 {self.config.azure_resource_group} " f"及其所有资源..."
+            )
 
             # 删除资源组（这会自动删除其中的所有资源）
             poller = self.resource_client.resource_groups.begin_delete(
@@ -141,14 +137,13 @@ class AzureManager:
     async def _ensure_resource_group(self):
         """确保资源组存在"""
         try:
-            self.resource_client.resource_groups.get(
-                self.config.azure_resource_group)
+            self.resource_client.resource_groups.get(self.config.azure_resource_group)
             logger.info(f"资源组 {self.config.azure_resource_group} 已存在")
         except ResourceNotFoundError:
             logger.info(f"正在创建资源组 {self.config.azure_resource_group}...")
             self.resource_client.resource_groups.create_or_update(
                 self.config.azure_resource_group,
-                {"location": self.config.azure_location}
+                {"location": self.config.azure_location},
             )
             logger.info(f"资源组 {self.config.azure_resource_group} 创建完成")
 
@@ -173,7 +168,7 @@ class AzureManager:
         share_client = ShareClient(
             account_url=f"https://{storage_name}.file.core.windows.net",
             share_name="__readiness_test__",
-            credential=keys.keys[0].value
+            credential=keys.keys[0].value,
         )
         try:
             share_client.get_share_properties()
@@ -200,7 +195,9 @@ class AzureManager:
 
             if props.provisioning_state != "Succeeded":
                 logger.info("存储账户存在但未完全就绪，等待中...")
-                self.storage_account_key = await self._wait_for_storage_account_ready(storage_name)
+                self.storage_account_key = await self._wait_for_storage_account_ready(
+                    storage_name
+                )
             else:
                 # 直接获取密钥
                 keys = self.storage_client.storage_accounts.list_keys(
@@ -211,20 +208,23 @@ class AzureManager:
         except ResourceNotFoundError:
             logger.info("创建存储账户...")
             poller = self.storage_client.storage_accounts.begin_create(
-                self.config.azure_resource_group, storage_name,
+                self.config.azure_resource_group,
+                storage_name,
                 {
                     "sku": {"name": "Standard_LRS"},
                     "kind": "StorageV2",
                     "location": self.config.azure_location,
                     "encryption": {
                         "services": {"file": {"enabled": True}},
-                        "key_source": "Microsoft.Storage"
-                    }
-                }
+                        "key_source": "Microsoft.Storage",
+                    },
+                },
             )
             poller.wait()  # 等待ARM部署完成
             logger.info("等待存储账户完全就绪...")
-            self.storage_account_key = await self._wait_for_storage_account_ready(storage_name)
+            self.storage_account_key = await self._wait_for_storage_account_ready(
+                storage_name
+            )
 
         self.config.storage_account_name = storage_name
         logger.info("存储账户已就绪")
@@ -232,13 +232,15 @@ class AzureManager:
     @retry_with_backoff(max_attempts=3, base_delay=2.0)
     async def _ensure_file_share(self):
         """确保文件共享存在"""
-        account_url = f"https://{self.config.storage_account_name}.file.core.windows.net"
+        account_url = (
+            f"https://{self.config.storage_account_name}.file.core.windows.net"
+        )
         logger.info(f"确保文件共享: {self.config.storage_file_share_name}")
 
         share_client = ShareClient(
             account_url=account_url,
             share_name=self.config.storage_file_share_name,
-            credential=self.storage_account_key
+            credential=self.storage_account_key,
         )
 
         try:
@@ -252,14 +254,16 @@ class AzureManager:
     @retry_with_backoff(max_attempts=3, base_delay=1.0)
     async def _ensure_v2ray_config(self):
         """确保V2Ray配置文件存在"""
-        account_url = f"https://{self.config.storage_account_name}.file.core.windows.net"
+        account_url = (
+            f"https://{self.config.storage_account_name}.file.core.windows.net"
+        )
         logger.info("确保V2Ray配置文件存在")
 
         file_client = ShareFileClient(
             account_url=account_url,
             share_name=self.config.storage_file_share_name,
             file_path=self.config.storage_file_name,
-            credential=self.storage_account_key
+            credential=self.storage_account_key,
         )
 
         try:
@@ -269,7 +273,7 @@ class AzureManager:
             logger.info("生成并上传V2Ray配置文件...")
             config_content = self._generate_v2ray_config()
             config_json = json.dumps(config_content, indent=2)
-            config_bytes = config_json.encode('utf-8')
+            config_bytes = config_json.encode("utf-8")
 
             file_client.upload_file(data=config_bytes, length=len(config_bytes))
             logger.info(f"V2Ray配置文件上传完成，大小: {len(config_bytes)} bytes")
@@ -277,43 +281,51 @@ class AzureManager:
     def _generate_v2ray_config(self) -> Dict[str, Any]:
         """生成V2Ray服务器配置"""
         return {
-            "log": {
-                "loglevel": "info"
-            },
+            "log": {"loglevel": "info"},
             "inbounds": [
                 {
+                    "listen": "0.0.0.0",
                     "port": self.config.v2ray_port,
                     "protocol": "vmess",
                     "settings": {
-                        "clients": [
-                            {
-                                "id": self.config.v2ray_client_id,
-                                "alterId": 0
-                            }
-                        ]
+                        "clients": [{"id": self.config.v2ray_client_id, "alterId": 0}]
                     },
                     "streamSettings": {
-                        "network": "ws",
-                        "wsSettings": {
-                            "path": self.config.v2ray_path
-                        }
-                    }
+                        "network": "tcp",
+                        "tcpSettings": {
+                            "header": {
+                                "type": "http",
+                                "response": {
+                                    "version": "1.1",
+                                    "status": "200",
+                                    "reason": "OK",
+                                    "headers": {
+                                        "Content-Type": [
+                                            "application/octet-stream",
+                                            "video/mpeg",
+                                            "application/x-msdownload",
+                                            "text/html",
+                                            "application/x-shockwave-flash",
+                                        ],
+                                        "Transfer-Encoding": ["chunked"],
+                                        "Connection": ["keep-alive"],
+                                        "Pragma": "no-cache",
+                                    },
+                                },
+                            }
+                        },
+                        "security": "none",
+                    },
                 }
             ],
-            "outbounds": [
-                {
-                    "protocol": "freedom",
-                    "settings": {}
-                }
-            ]
+            "outbounds": [{"protocol": "freedom", "settings": {}}],
         }
 
     async def _ensure_container_instance(self):
         """确保容器实例存在"""
         try:
             container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group,
-                self.config.container_group_name
+                self.config.azure_resource_group, self.config.container_group_name
             )
             logger.info(f"容器实例 {self.config.container_group_name} 已存在")
 
@@ -334,38 +346,23 @@ class AzureManager:
                 {
                     "name": self.config.container_name,
                     "image": self.config.container_image,
-                    "resources": {
-                        "requests": {
-                            "cpu": 1,
-                            "memory_in_gb": 1
-                        }
-                    },
-                    "ports": [
-                        {
-                            "port": self.config.v2ray_port,
-                            "protocol": "TCP"
-                        }
-                    ],
+                    "resources": {"requests": {"cpu": 1, "memory_in_gb": 1}},
+                    "ports": [{"port": self.config.v2ray_port, "protocol": "TCP"}],
                     "volume_mounts": [
                         {
                             "name": "v2ray-config",
                             "mount_path": "/etc/v2ray",
-                            "read_only": True
+                            "read_only": True,
                         }
                     ],
-                    "command": ["v2ray", "run", "-c", "/etc/v2ray/config.json"]
+                    "command": ["v2ray", "run", "-c", "/etc/v2ray/config.json"],
                 }
             ],
             "os_type": "Linux",
             "ip_address": {
                 "type": "Public",
-                "ports": [
-                    {
-                        "port": self.config.v2ray_port,
-                        "protocol": "TCP"
-                    }
-                ],
-                "dns_name_label": self.config.get_unique_dns_label()
+                "ports": [{"port": self.config.v2ray_port, "protocol": "TCP"}],
+                "dns_name_label": self.config.get_unique_dns_label(),
             },
             "volumes": [
                 {
@@ -374,17 +371,17 @@ class AzureManager:
                         "share_name": self.config.storage_file_share_name,
                         "storage_account_name": self.config.storage_account_name,
                         "storage_account_key": self.storage_account_key,
-                        "read_only": True
-                    }
+                        "read_only": True,
+                    },
                 }
             ],
-            "restart_policy": "Always"
+            "restart_policy": "Always",
         }
 
         poller = self.container_client.container_groups.begin_create_or_update(
             self.config.azure_resource_group,
             self.config.container_group_name,
-            container_group
+            container_group,
         )
 
         result = poller.result()
@@ -400,8 +397,7 @@ class AzureManager:
         try:
             # 重启容器组
             poller = self.container_client.container_groups.begin_restart(
-                self.config.azure_resource_group,
-                self.config.container_group_name
+                self.config.azure_resource_group, self.config.container_group_name
             )
             poller.wait()  # 等待重启完成
 
@@ -415,10 +411,11 @@ class AzureManager:
         """获取容器的FQDN"""
         try:
             container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group,
-                self.config.container_group_name
+                self.config.azure_resource_group, self.config.container_group_name
             )
-            return container_group.ip_address.fqdn if container_group.ip_address else None
+            return (
+                container_group.ip_address.fqdn if container_group.ip_address else None
+            )
         except Exception:
             return None
 
@@ -426,8 +423,7 @@ class AzureManager:
         """获取容器的IP地址"""
         try:
             container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group,
-                self.config.container_group_name
+                self.config.azure_resource_group, self.config.container_group_name
             )
             return container_group.ip_address.ip if container_group.ip_address else None
         except Exception:

@@ -27,8 +27,8 @@ class Config:
 
     # V2Ray配置
     v2ray_client_id: Optional[str] = None
-    v2ray_port: int = 443
-    v2ray_path: str = "/azrayws"
+    v2ray_port: int = 8443  # 使用更常见的HTTPS替代端口
+    v2ray_path: str = "/azrayws"  # 保留以备将来使用
 
     # 本地配置
     socks5_port: int = 1080
