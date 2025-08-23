@@ -11,9 +11,11 @@
    - 参数: `--verbose`
    - 环境: 加载 `.env` 文件
 
-2. **Debug Main Module** - 直接调试主模块
-   - 入口点: `src.main` 模块
-   - 适用于模块级调试
+2. **Debug with Dry Run** - 带Dry Run模式的调试
+   - 入口点: `__main__.py`
+   - 参数: `--verbose --dry-run`
+   - 调试级别日志
+   - 不执行实际操作
 
 3. **Debug Tests** - 调试所有测试
    - 运行所有测试并支持断点调试
@@ -22,11 +24,6 @@
 4. **Debug Current Test File** - 调试当前测试文件
    - 只调试当前打开的测试文件
    - 使用 `${file}` 变量
-
-5. **Debug with Dry Run** - 带Dry Run模式的调试
-   - 参数: `--verbose --dry-run`
-   - 调试级别日志
-   - 不执行实际操作
 
 ### 使用方法
 

@@ -38,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f --socks5 127.0.0.1:1080 http://www.google.com || exit 1
 
 # 启动应用
-CMD ["python", "-m", "src.main"]
+CMD ["python", "__main__.py"]

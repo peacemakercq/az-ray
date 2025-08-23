@@ -81,7 +81,7 @@ docker run -d \
 pip install -r requirements.txt
 
 # 运行应用
-python -m src.main
+python __main__.py
 ```
 
 ## 配置路由器

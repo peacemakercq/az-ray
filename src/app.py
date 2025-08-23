@@ -112,28 +112,3 @@ class AzRayApp:
 
         signal.signal(signal.SIGINT, signal_handler)
         signal.signal(signal.SIGTERM, signal_handler)
-
-
-async def main():
-    """主入口函数"""
-    app = AzRayApp()
-
-    try:
-        # 设置信号处理
-        app.setup_signal_handlers()
-
-        # 初始化并启动
-        await app.initialize()
-        await app.start()
-
-    except KeyboardInterrupt:
-        logger.info("收到中断信号")
-    except Exception as e:
-        logger.error(f"应用运行失败: {e}")
-        sys.exit(1)
-    finally:
-        await app.stop()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

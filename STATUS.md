@@ -3,7 +3,7 @@
 ## ✅ 已完成的功能
 
 ### 核心应用架构
-- [x] Python主应用程序 (`src/main.py`)
+- [x] Python主应用程序 (`src/app.py`)
 - [x] 配置管理系统 (`src/config.py`)
 - [x] Azure资源管理器 (`src/azure_manager.py`)
 - [x] V2Ray代理管理器 (`src/v2ray_manager.py`)
@@ -78,7 +78,7 @@ code .
 
 # 或本地开发
 pip install -r requirements.txt
-python -m src.main
+python __main__.py
 ```
 
 ## 🛠️ 架构设计
