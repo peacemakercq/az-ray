@@ -32,10 +32,17 @@ class V2RayManager:
 
     async def _generate_client_config(self):
         """生成V2Ray客户端配置"""
-        # 获取Azure容器的FQDN
-        server_fqdn = await self.azure_manager.get_container_fqdn()
-        if not server_fqdn:
-            raise RuntimeError("无法获取Azure容器的FQDN")
+        # 获取Azure容器的IP地址（优先使用IP，避免DNS封锁）
+        server_ip = await self.azure_manager.get_container_ip()
+        if not server_ip:
+            # 如果IP不可用，fallback到FQDN
+            server_address = await self.azure_manager.get_container_fqdn()
+            if not server_address:
+                raise RuntimeError("无法获取Azure容器的IP地址或FQDN")
+            logger.warning("IP地址不可用，使用FQDN作为fallback")
+        else:
+            server_address = server_ip
+            logger.info(f"使用容器IP地址: {server_ip}")
 
         # 生成客户端配置
         client_config = {
@@ -60,7 +67,7 @@ class V2RayManager:
                     "settings": {
                         "vnext": [
                             {
-                                "address": server_fqdn,
+                                "address": server_address,
                                 "port": self.config.v2ray_port,
                                 "users": [
                                     {

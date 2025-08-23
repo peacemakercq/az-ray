@@ -421,3 +421,14 @@ class AzureManager:
             return container_group.ip_address.fqdn if container_group.ip_address else None
         except Exception:
             return None
+
+    async def get_container_ip(self) -> Optional[str]:
+        """获取容器的IP地址"""
+        try:
+            container_group = self.container_client.container_groups.get(
+                self.config.azure_resource_group,
+                self.config.container_group_name
+            )
+            return container_group.ip_address.ip if container_group.ip_address else None
+        except Exception:
+            return None

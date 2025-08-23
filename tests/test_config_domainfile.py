@@ -59,8 +59,8 @@ invalid-domain-
             config = Config()
             
             # 验证加载的域名
-            # 文件中4个有效域名，默认列表有20个，合计24个（如有重复会保留多份）
-            assert len(config.domain_list) == 24
+            # 文件中4个有效域名，默认列表有21个，合计25个（如有重复会保留多份）
+            assert len(config.domain_list) == 25
             assert "google.com" in config.domain_list
             assert "youtube.com" in config.domain_list
             assert "facebook.com" in config.domain_list
