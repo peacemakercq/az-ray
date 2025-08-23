@@ -172,7 +172,7 @@ class V2RayManager:
         logger.info("正在重启V2Ray代理...")
         await self.stop()
 
-        # 重新生成配置（可能FQDN已变化）
+        # 重新生成配置（可能domains或者FQDN已变化）
         await self._generate_client_config()
 
         await self.start()

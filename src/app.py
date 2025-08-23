@@ -8,6 +8,7 @@ from .azure_manager import AzureManager
 from .v2ray_manager import V2RayManager
 from .health_monitor import HealthMonitor
 from .config import Config
+from .file_watcher import FileWatcher
 
 # 配置日志
 logging.basicConfig(
@@ -29,6 +30,7 @@ class AzRayApp:
         self.azure_manager: Optional[AzureManager] = None
         self.v2ray_manager: Optional[V2RayManager] = None
         self.health_monitor: Optional[HealthMonitor] = None
+        self.file_watcher: Optional[FileWatcher] = None
         self.running = False
 
     async def initialize(self):
@@ -54,6 +56,13 @@ class AzRayApp:
                 self.v2ray_manager
             )
 
+            # 初始化域名文件监控
+            if self.config.domain_file:
+                self.file_watcher = FileWatcher(
+                    self.config.domain_file,
+                    self._on_domain_file_changed
+                )
+
             logger.info("所有组件初始化完成")
 
         except Exception as e:
@@ -75,6 +84,10 @@ class AzRayApp:
 
             # 启动健康监控
             await self.health_monitor.start()
+
+            # 启动域名文件监控
+            if self.file_watcher:
+                await self.file_watcher.start()
 
             logger.info(f"AZ-Ray应用已启动，SOCKS5代理监听端口: {self.config.socks5_port}")
 
@@ -98,11 +111,30 @@ class AzRayApp:
         if self.health_monitor:
             await self.health_monitor.stop()
 
+        # 停止域名文件监控
+        if self.file_watcher:
+            await self.file_watcher.stop()
+
         # 停止V2Ray
         if self.v2ray_manager:
             await self.v2ray_manager.stop()
 
         logger.info("AZ-Ray应用已停止")
+
+    def _on_domain_file_changed(self):
+        """域名文件变更回调"""
+        try:
+            logger.info("检测到域名文件变更，正在重新加载...")
+            
+            # 重新加载域名列表
+            self.config.reload_domain_list()
+            
+            # 异步重启V2Ray（使用新的域名列表）
+            if self.v2ray_manager:
+                asyncio.create_task(self.v2ray_manager.restart())
+                
+        except Exception as e:
+            logger.error(f"处理域名文件变更失败: {e}")
 
     def setup_signal_handlers(self):
         """设置信号处理器"""

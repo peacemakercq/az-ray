@@ -99,6 +99,15 @@ class Config:
         if self.domain_file:
             self.domain_list.extend(self._load_domains_from_file(self.domain_file))
 
+    def reload_domain_list(self):
+        """重新加载域名列表"""
+        logging.info("重新加载域名列表...")
+        old_count = len(self.domain_list) if self.domain_list else 0
+        self._initialize_domain_list()
+        new_count = len(self.domain_list)
+        logging.info(f"域名列表重新加载完成: {old_count} -> {new_count}")
+        return self.domain_list
+
     def _load_domains_from_file(self, filepath: str) -> list[str]:
         """从文件加载域名列表"""
         try:
