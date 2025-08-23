@@ -19,7 +19,7 @@ class Config:
     # V2Ray配置
     v2ray_client_id: Optional[str] = None
     v2ray_port: int = 443
-    v2ray_path: str = "/v2ray"
+    v2ray_path: str = "/azrayws"
 
     # 本地配置
     socks5_port: int = 1080
@@ -31,8 +31,8 @@ class Config:
     storage_file_name: str = "config.json"
 
     # Azure容器实例配置
-    container_group_name: str = "azraycg"
-    container_name: str = "azrayci"
+    container_group_name: str = "azraycontainer"
+    container_name: str = "azray"
     container_image: str = "v2fly/v2fly-core:latest"
 
     # 被墙域名列表
