@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from unittest.mock import Mock, AsyncMock
 from src.config import Config
 from src.azure_manager import AzureManager
@@ -47,7 +46,7 @@ class TestAzureManager:
     async def test_initialize(self, mock_config):
         """测试初始化"""
         manager = AzureManager(mock_config)
-        
+
         # 模拟初始化过程
         with pytest.raises(ValueError, match="需要提供AZURE_SUBSCRIPTION_ID"):
             mock_config.azure_subscription_id = None
@@ -62,9 +61,9 @@ class TestAzureManager:
         mock_azure_manager._ensure_file_share = AsyncMock()
         mock_azure_manager._ensure_v2ray_config = AsyncMock()
         mock_azure_manager._ensure_container_instance = AsyncMock()
-        
+
         await mock_azure_manager.ensure_resources()
-        
+
         # 验证所有方法都被调用
         mock_azure_manager._ensure_resource_group.assert_called_once()
         mock_azure_manager._ensure_storage_account.assert_called_once()
@@ -75,10 +74,11 @@ class TestAzureManager:
     def test_generate_v2ray_config(self, mock_azure_manager):
         """测试V2Ray配置生成"""
         config = mock_azure_manager._generate_v2ray_config()
-        
+
         assert "log" in config
         assert "inbounds" in config
         assert "outbounds" in config
         assert config["inbounds"][0]["port"] == 443
         assert config["inbounds"][0]["protocol"] == "vmess"
-        assert config["inbounds"][0]["settings"]["clients"][0]["id"] == "550e8400-e29b-41d4-a716-446655440000"
+        client_id = config["inbounds"][0]["settings"]["clients"][0]["id"]
+        assert client_id == "550e8400-e29b-41d4-a716-446655440000"

@@ -1,5 +1,4 @@
 import pytest
-import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 from src.config import Config
 from src.v2ray_manager import V2RayManager
@@ -22,7 +21,8 @@ def mock_config():
 def mock_azure_manager():
     """模拟Azure管理器"""
     manager = Mock(spec=AzureManager)
-    manager.get_container_fqdn = AsyncMock(return_value="test.eastus.azurecontainer.io")
+    manager.get_container_fqdn = AsyncMock(
+        return_value="test.eastus.azurecontainer.io")
     return manager
 
 
@@ -38,7 +38,8 @@ class TestV2RayManager:
     @pytest.mark.asyncio
     async def test_initialize(self, v2ray_manager):
         """测试初始化"""
-        with patch.object(v2ray_manager, '_generate_client_config', new_callable=AsyncMock):
+        with patch.object(v2ray_manager, '_generate_client_config',
+                          new_callable=AsyncMock):
             await v2ray_manager.initialize()
             v2ray_manager._generate_client_config.assert_called_once()
 
@@ -46,14 +47,14 @@ class TestV2RayManager:
     async def test_generate_client_config(self, v2ray_manager):
         """测试客户端配置生成"""
         await v2ray_manager._generate_client_config()
-        
+
         assert v2ray_manager.config_file is not None
-        
+
         # 验证配置文件内容
         import json
         with open(v2ray_manager.config_file, 'r') as f:
             config = json.load(f)
-            
+
         assert "inbounds" in config
         assert "outbounds" in config
         assert "routing" in config
@@ -67,14 +68,14 @@ class TestV2RayManager:
             mock_process = Mock()
             mock_process.poll.return_value = None  # 进程运行中
             mock_popen.return_value = mock_process
-            
+
             # 初始化配置
             await v2ray_manager._generate_client_config()
-            
+
             # 启动
             await v2ray_manager.start()
             assert v2ray_manager.process is not None
-            
+
             # 停止
             await v2ray_manager.stop()
             mock_process.terminate.assert_called_once()
@@ -83,13 +84,13 @@ class TestV2RayManager:
         """测试运行状态检查"""
         # 未运行
         assert not v2ray_manager.is_running()
-        
+
         # 模拟运行状态
         mock_process = Mock()
         mock_process.poll.return_value = None
         v2ray_manager.process = mock_process
         assert v2ray_manager.is_running()
-        
+
         # 模拟已停止
         mock_process.poll.return_value = 0
         assert not v2ray_manager.is_running()
