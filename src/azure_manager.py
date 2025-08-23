@@ -222,7 +222,7 @@ class AzureManager:
                     }
                 }
             )
-            poller.result()  # 等待ARM部署完成
+            poller.wait()  # 等待ARM部署完成
             logger.info("等待存储账户完全就绪...")
             self.storage_account_key = await self._wait_for_storage_account_ready(storage_name)
 
@@ -398,17 +398,12 @@ class AzureManager:
         logger.info("正在重启容器实例...")
 
         try:
-            # 停止容器组
-            self.container_client.container_groups.stop(
+            # 重启容器组
+            poller = self.container_client.container_groups.begin_restart(
                 self.config.azure_resource_group,
                 self.config.container_group_name
             )
-
-            # 启动容器组
-            self.container_client.container_groups.start(
-                self.config.azure_resource_group,
-                self.config.container_group_name
-            )
+            poller.wait()  # 等待重启完成
 
             logger.info("容器实例重启完成")
 
