@@ -15,6 +15,7 @@ class TestConfigDomainFile:
         os.environ["AZURE_CLIENT_ID"] = "test-id"
         os.environ["AZURE_CLIENT_SECRET"] = "test-secret"
         os.environ["AZURE_TENANT_ID"] = "test-tenant"
+        os.environ["AZURE_SUBSCRIPTION_ID"] = "test-subscription"
         os.environ["V2RAY_CLIENT_ID"] = "550e8400-e29b-41d4-a716-446655440000"
         
         try:
@@ -25,7 +26,9 @@ class TestConfigDomainFile:
             assert "youtube.com" in config.domain_list
         finally:
             # 清理环境变量
-            for key in ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "V2RAY_CLIENT_ID"]:
+            keys = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
+                    "AZURE_SUBSCRIPTION_ID", "V2RAY_CLIENT_ID"]
+            for key in keys:
                 os.environ.pop(key, None)
 
     def test_load_domains_from_file(self):
@@ -49,6 +52,7 @@ invalid-domain-
             os.environ["AZURE_CLIENT_ID"] = "test-id"
             os.environ["AZURE_CLIENT_SECRET"] = "test-secret"
             os.environ["AZURE_TENANT_ID"] = "test-tenant"
+            os.environ["AZURE_SUBSCRIPTION_ID"] = "test-subscription"
             os.environ["V2RAY_CLIENT_ID"] = "550e8400-e29b-41d4-a716-446655440000"
             os.environ["DOMAIN_FILE"] = temp_file
             
@@ -66,7 +70,9 @@ invalid-domain-
         finally:
             # 清理
             os.unlink(temp_file)
-            for key in ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "V2RAY_CLIENT_ID", "DOMAIN_FILE"]:
+            keys = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
+                    "AZURE_SUBSCRIPTION_ID", "V2RAY_CLIENT_ID", "DOMAIN_FILE"]
+            for key in keys:
                 os.environ.pop(key, None)
 
     def test_domain_file_not_found(self):
@@ -75,6 +81,7 @@ invalid-domain-
         os.environ["AZURE_CLIENT_ID"] = "test-id"
         os.environ["AZURE_CLIENT_SECRET"] = "test-secret"
         os.environ["AZURE_TENANT_ID"] = "test-tenant"
+        os.environ["AZURE_SUBSCRIPTION_ID"] = "test-subscription"
         os.environ["V2RAY_CLIENT_ID"] = "550e8400-e29b-41d4-a716-446655440000"
         os.environ["DOMAIN_FILE"] = "/non/existent/file.txt"
         
@@ -83,7 +90,9 @@ invalid-domain-
                 Config()
         finally:
             # 清理环境变量
-            for key in ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "V2RAY_CLIENT_ID", "DOMAIN_FILE"]:
+            keys = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
+                    "AZURE_SUBSCRIPTION_ID", "V2RAY_CLIENT_ID", "DOMAIN_FILE"]
+            for key in keys:
                 os.environ.pop(key, None)
 
     def test_domain_validation(self):
@@ -92,6 +101,7 @@ invalid-domain-
         os.environ["AZURE_CLIENT_ID"] = "test-id"
         os.environ["AZURE_CLIENT_SECRET"] = "test-secret"
         os.environ["AZURE_TENANT_ID"] = "test-tenant"
+        os.environ["AZURE_SUBSCRIPTION_ID"] = "test-subscription"
         os.environ["V2RAY_CLIENT_ID"] = "550e8400-e29b-41d4-a716-446655440000"
         
         try:
@@ -110,5 +120,7 @@ invalid-domain-
             
         finally:
             # 清理环境变量
-            for key in ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID", "V2RAY_CLIENT_ID"]:
+            keys = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
+                    "AZURE_SUBSCRIPTION_ID", "V2RAY_CLIENT_ID"]
+            for key in keys:
                 os.environ.pop(key, None)

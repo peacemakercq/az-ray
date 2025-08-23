@@ -49,10 +49,10 @@ class Config:
         self.azure_client_secret = self._get_env_required(
             "AZURE_CLIENT_SECRET")
         self.azure_tenant_id = self._get_env_required("AZURE_TENANT_ID")
+        self.azure_subscription_id = self._get_env_required("AZURE_SUBSCRIPTION_ID")
         self.v2ray_client_id = self._get_env_required("V2RAY_CLIENT_ID")
 
         # 可选配置
-        self.azure_subscription_id = os.getenv("AZURE_SUBSCRIPTION_ID")
         self.azure_resource_group = os.getenv("AZURE_RESOURCE_GROUP", self.azure_resource_group)
         self.azure_location = os.getenv("AZURE_LOCATION", self.azure_location)
 
