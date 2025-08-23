@@ -45,6 +45,7 @@
    V2RAY_CLIENT_ID=your_v2ray_uuid
    AZURE_RESOURCE_GROUP=az-ray-rg
    AZURE_LOCATION=southeastasia
+   V2RAY_PORT=9088
    SOCKS5_PORT=1080
    HEALTH_CHECK_INTERVAL=600
    DOMAIN_FILE=/app/config/domains.txt  # 可选：自定义域名文件

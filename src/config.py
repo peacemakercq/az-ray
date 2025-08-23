@@ -27,7 +27,7 @@ class Config:
 
     # V2Ray配置
     v2ray_client_id: Optional[str] = None
-    v2ray_port: int = 8443  # 使用更常见的HTTPS替代端口
+    v2ray_port: int = 9088  # 默认端口
     v2ray_path: str = "/azrayws"  # 保留以备将来使用
 
     # 本地配置
@@ -56,6 +56,7 @@ class Config:
         self.azure_resource_group = os.getenv("AZURE_RESOURCE_GROUP", self.azure_resource_group)
         self.azure_location = os.getenv("AZURE_LOCATION", self.azure_location)
 
+        self.v2ray_port = int(os.getenv("V2RAY_PORT", self.v2ray_port))
         self.socks5_port = int(os.getenv("SOCKS5_PORT", self.socks5_port))
         self.health_check_interval = int(os.getenv("HEALTH_CHECK_INTERVAL", self.health_check_interval))
 

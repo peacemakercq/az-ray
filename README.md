@@ -34,6 +34,7 @@ AZURE_TENANT_ID=your_tenant_id
 
 # V2Ray配置
 V2RAY_CLIENT_ID=your_uuid
+V2RAY_PORT=9088  # 可选，默认9088
 
 # 可选配置
 AZURE_SUBSCRIPTION_ID=your_subscription_id
