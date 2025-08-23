@@ -119,7 +119,7 @@ class V2RayManager:
         try:
             # 启动V2Ray进程
             self.process = subprocess.Popen(
-                ["v2ray", "-config", self.config_file],
+                ["v2ray", "run", "-c", self.config_file],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 universal_newlines=True

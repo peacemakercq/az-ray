@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import os
@@ -118,19 +119,19 @@ class AzureManager:
             # 检查资源组是否存在
             self.resource_client.resource_groups.get(
                 self.config.azure_resource_group)
-            
+
             logger.warning(f"正在删除资源组 {self.config.azure_resource_group} "
                            f"及其所有资源...")
-            
+
             # 删除资源组（这会自动删除其中的所有资源）
             poller = self.resource_client.resource_groups.begin_delete(
                 self.config.azure_resource_group
             )
-            
+
             logger.info("等待资源组删除完成...")
             poller.wait()
             logger.info(f"资源组 {self.config.azure_resource_group} 删除完成")
-            
+
         except ResourceNotFoundError:
             logger.info(f"资源组 {self.config.azure_resource_group} 不存在，无需删除")
         except Exception as e:
@@ -155,14 +156,18 @@ class AzureManager:
         """确保存储账户存在"""
         storage_name = self.config.get_unique_storage_name()
 
+        logger.info(f"检查存储账户: {storage_name} (资源组: {self.config.azure_resource_group})")
+
         try:
+            # 检查存储账户是否存在
             self.storage_client.storage_accounts.get_properties(
                 self.config.azure_resource_group,
                 storage_name
             )
             logger.info(f"存储账户 {storage_name} 已存在")
+
         except ResourceNotFoundError:
-            logger.info(f"正在创建存储账户 {storage_name}...")
+            logger.info(f"存储账户 {storage_name} 不存在，正在创建...")
 
             # 创建存储账户
             poller = self.storage_client.storage_accounts.begin_create(
@@ -180,50 +185,229 @@ class AzureManager:
                     }
                 }
             )
-            poller.wait()
+
+            # 等待存储账户创建完成并获取结果
+            poller.result()
             logger.info(f"存储账户 {storage_name} 创建完成")
 
-        # 获取存储账户密钥
-        keys = self.storage_client.storage_accounts.list_keys(
-            self.config.azure_resource_group,
-            storage_name
-        )
-        self.storage_account_key = keys.keys[0].value
+            # 额外等待确保存储账户完全可用
+            await asyncio.sleep(10)
+            logger.info("等待存储账户完全就绪...")
 
-        # 更新配置中的存储账户名
+        except Exception as e:
+            logger.error(f"存储账户操作失败: {e}")
+            logger.error(f"存储账户名: {storage_name}")
+            logger.error(f"资源组: {self.config.azure_resource_group}")
+            logger.error(f"位置: {self.config.azure_location}")
+            raise
+
+        # 获取存储账户密钥
+        try:
+            logger.info("正在获取存储账户访问密钥...")
+            keys = self.storage_client.storage_accounts.list_keys(
+                self.config.azure_resource_group,
+                storage_name
+            )
+            self.storage_account_key = keys.keys[0].value
+            logger.info("存储账户密钥获取成功")
+
+        except Exception as e:
+            logger.error(f"获取存储账户密钥失败: {e}")
+            logger.error(f"存储账户名: {storage_name}")
+            logger.error(f"资源组: {self.config.azure_resource_group}")
+            raise
+
+        # 更新配置中的存储账户名（用于后续操作）
         self.config.storage_account_name = storage_name
+        logger.debug(f"存储账户名已更新为: {storage_name}")
 
     async def _ensure_file_share(self):
         """确保文件共享存在"""
+        if not self.storage_account_key:
+            raise ValueError("存储账户密钥未初始化，请先调用 _ensure_storage_account()")
+
+        if not self.config.storage_account_name:
+            raise ValueError("存储账户名未设置")
+
+        account_url = (
+            f"https://{self.config.storage_account_name}"
+            f".file.core.windows.net"
+        )
+
+        logger.info("准备操作文件共享:")
+        logger.info(f"  存储账户: {self.config.storage_account_name}")
+        logger.info(f"  文件共享名: {self.config.storage_file_share_name}")
+        logger.info(f"  账户URL: {account_url}")
+        logger.info(f"  资源组: {self.config.azure_resource_group}")
+
+        # 确保存储账户完全就绪（在某些情况下需要额外等待）
+        await asyncio.sleep(5)
+        logger.info("等待存储账户完全就绪...")
+
         try:
-            account_url = (
-                f"https://{self.config.storage_account_name}"
-                f".file.core.windows.net"
-            )
+            # 验证存储账户是否确实存在
+            logger.info("验证存储账户状态...")
+            try:
+                storage_props = self.storage_client.storage_accounts.get_properties(
+                    self.config.azure_resource_group,
+                    self.config.storage_account_name
+                )
+                logger.info(f"存储账户状态: {storage_props.provisioning_state}")
+
+            except Exception as verify_error:
+                logger.error(f"验证存储账户失败: {verify_error}")
+                raise ValueError(f"存储账户 {self.config.storage_account_name} 不可访问: {verify_error}")
+
+            # 创建ShareClient
             share_client = ShareClient(
                 account_url=account_url,
                 share_name=self.config.storage_file_share_name,
                 credential=self.storage_account_key
             )
 
-            # 创建文件共享（如果不存在）
+            # 先尝试获取文件共享属性来检查是否存在
             try:
-                share_client.create_share()
-                logger.info(f"文件共享 {self.config.storage_file_share_name} 创建完成")
-            except ResourceExistsError:
+                properties = share_client.get_share_properties()
                 logger.info(f"文件共享 {self.config.storage_file_share_name} 已存在")
+                logger.debug(f"文件共享配额: {properties.quota}GB")
+
+            except ResourceNotFoundError:
+                # 文件共享不存在，创建它
+                logger.info(f"文件共享 {self.config.storage_file_share_name} 不存在，正在创建...")
+
+                try:
+                    # 设置1GB配额（只存放config.json文件）
+                    share_client.create_share(quota=1)
+                    logger.info(f"文件共享 {self.config.storage_file_share_name} 创建完成 (配额: 1GB)")
+
+                except ResourceExistsError:
+                    # 在检查和创建之间，文件共享被其他进程创建了
+                    logger.info(f"文件共享 {self.config.storage_file_share_name} 已存在（并发创建）")
+
+                except Exception as create_error:
+                    logger.error(f"创建文件共享失败: {create_error}")
+                    logger.error(f"错误类型: {type(create_error).__name__}")
+
+                    # 提供详细的错误诊断
+                    if "ResourceNotFound" in str(create_error):
+                        logger.error("可能的原因:")
+                        logger.error("1. 存储账户尚未完全创建完成")
+                        logger.error("2. 存储账户名称不正确")
+                        logger.error("3. 访问密钥无效或过期")
+                        logger.error("4. 网络连接问题")
+
+                        # 建议重试
+                        logger.info("尝试等待后重试...")
+                        import asyncio
+                        await asyncio.sleep(15)
+
+                        try:
+                            share_client.create_share(quota=1)
+                            logger.info(f"重试成功，文件共享 {self.config.storage_file_share_name} 创建完成")
+                        except Exception as retry_error:
+                            logger.error(f"重试也失败: {retry_error}")
+                            raise
+                    else:
+                        raise create_error
+
+            except Exception as check_error:
+                logger.error(f"检查文件共享属性失败: {check_error}")
+                logger.error(f"错误类型: {type(check_error).__name__}")
+
+                # 如果是认证相关错误，不要尝试创建
+                if "AuthenticationFailed" in str(check_error):
+                    logger.error("认证失败，请检查存储账户密钥和系统时间")
+                    raise
+
+                # 如果检查失败但不是认证问题，尝试直接创建
+                logger.info("尝试直接创建文件共享...")
+                try:
+                    share_client.create_share(quota=1)
+                    logger.info(f"文件共享 {self.config.storage_file_share_name} 创建完成")
+                except ResourceExistsError:
+                    logger.info(f"文件共享 {self.config.storage_file_share_name} 已存在")
+                except Exception as fallback_error:
+                    logger.error(f"备用创建方法也失败: {fallback_error}")
+                    raise
 
         except Exception as e:
-            logger.error(f"创建文件共享失败: {e}")
+            logger.error(f"文件共享操作失败: {e}")
+            logger.error(f"错误类型: {type(e).__name__}")
+            logger.error(f"存储账户名: {self.config.storage_account_name}")
+            logger.error(f"文件共享名: {self.config.storage_file_share_name}")
+            logger.error(f"资源组: {self.config.azure_resource_group}")
+            logger.error(f"账户URL: {account_url}")
+
+            # 如果是认证相关的错误，提供调试信息
+            if "AuthenticationFailed" in str(e) or "authentication" in str(e).lower():
+                logger.error("认证错误调试信息:")
+                logger.error(f"存储账户密钥长度: {len(self.storage_account_key) if self.storage_account_key else 0}")
+
+                # 检查时间同步
+                from datetime import datetime, timezone
+                current_time = datetime.now(timezone.utc)
+                logger.error(f"当前UTC时间: {current_time.isoformat()}")
+
             raise
 
     async def _ensure_v2ray_config(self):
         """确保V2Ray配置文件存在"""
+        if not self.storage_account_key:
+            raise ValueError("存储账户密钥未初始化，请先调用 _ensure_storage_account()")
+
+        if not self.config.storage_account_name:
+            raise ValueError("存储账户名未设置")
+
+        account_url = (
+            f"https://{self.config.storage_account_name}"
+            f".file.core.windows.net"
+        )
+
+        logger.info("检查V2Ray配置文件:")
+        logger.info(f"  存储账户: {self.config.storage_account_name}")
+        logger.info(f"  文件共享: {self.config.storage_file_share_name}")
+        logger.info(f"  文件路径: {self.config.storage_file_name}")
+        logger.info(f"  账户URL: {account_url}")
+
         try:
-            account_url = (
-                f"https://{self.config.storage_account_name}"
-                f".file.core.windows.net"
+            # 先验证文件共享是否存在
+            logger.info("验证文件共享状态...")
+            share_client = ShareClient(
+                account_url=account_url,
+                share_name=self.config.storage_file_share_name,
+                credential=self.storage_account_key
             )
+
+            try:
+                share_props = share_client.get_share_properties()
+                logger.info(f"文件共享状态正常，配额: {share_props.quota}GB")
+            except Exception as share_error:
+                logger.error(f"文件共享不可访问: {share_error}")
+                logger.error(f"错误类型: {type(share_error).__name__}")
+
+                # 提供详细的诊断信息
+                logger.error("诊断信息:")
+                logger.error(f"  存储账户名: {self.config.storage_account_name}")
+                logger.error(f"  文件共享名: {self.config.storage_file_share_name}")
+                logger.error(f"  账户URL: {account_url}")
+                logger.error(f"  密钥长度: {len(self.storage_account_key) if self.storage_account_key else 0}")
+
+                # 如果是ResourceNotFound错误，可能文件共享真的不存在
+                if "ResourceNotFound" in str(share_error) or "NotFound" in str(share_error):
+                    logger.error("文件共享似乎不存在，尝试重新创建...")
+                    try:
+                        # 尝试重新创建文件共享
+                        await self._ensure_file_share()
+                        # 重新获取属性
+                        share_props = share_client.get_share_properties()
+                        logger.info(f"重新创建后文件共享状态正常，配额: {share_props.quota}GB")
+                    except Exception as recreate_error:
+                        logger.error(f"重新创建文件共享也失败: {recreate_error}")
+                        raise ValueError(f"文件共享 {self.config.storage_file_share_name} 创建失败: {recreate_error}")
+                else:
+                    raise ValueError(f"文件共享 {self.config.storage_file_share_name} 访问失败: {share_error}")
+
+            # 创建文件客户端
             file_client = ShareFileClient(
                 account_url=account_url,
                 share_name=self.config.storage_file_share_name,
@@ -233,21 +417,101 @@ class AzureManager:
 
             # 检查文件是否存在
             try:
-                file_client.get_file_properties()
+                properties = file_client.get_file_properties()
                 logger.info("V2Ray配置文件已存在")
-            except ResourceNotFoundError:
-                # 生成并上传配置文件
-                logger.info("正在生成V2Ray配置文件...")
-                config_content = self._generate_v2ray_config()
+                logger.debug(f"文件大小: {properties.size} bytes")
 
-                file_client.upload_file(
-                    data=json.dumps(config_content, indent=2),
-                    length=None
-                )
-                logger.info("V2Ray配置文件上传完成")
+            except ResourceNotFoundError:
+                # 文件不存在，生成并上传配置文件
+                logger.info("V2Ray配置文件不存在，正在生成并上传...")
+
+                try:
+                    config_content = self._generate_v2ray_config()
+                    config_json = json.dumps(config_content, indent=2)
+                    config_bytes = config_json.encode('utf-8')
+
+                    logger.info(f"配置文件大小: {len(config_bytes)} bytes")
+
+                    # 上传文件
+                    file_client.upload_file(
+                        data=config_bytes,
+                        length=len(config_bytes)
+                    )
+
+                    logger.info("V2Ray配置文件上传完成")
+
+                    # 验证上传结果
+                    try:
+                        verify_props = file_client.get_file_properties()
+                        logger.info(f"上传验证成功，文件大小: {verify_props.size} bytes")
+                    except Exception as verify_error:
+                        logger.warning(f"上传验证失败: {verify_error}")
+
+                except Exception as upload_error:
+                    logger.error(f"上传配置文件失败: {upload_error}")
+                    logger.error(f"错误类型: {type(upload_error).__name__}")
+
+                    if "ResourceNotFound" in str(upload_error):
+                        logger.error("可能的原因:")
+                        logger.error("1. 文件共享不存在或不可访问")
+                        logger.error("2. 存储账户密钥无效")
+                        logger.error("3. 网络连接问题")
+
+                        # 重新检查文件共享状态
+                        try:
+                            share_client.get_share_properties()
+                            logger.error("文件共享存在，但文件操作失败")
+                        except Exception:
+                            logger.error("文件共享也不可访问了")
+
+                    raise upload_error
+
+            except Exception as check_error:
+                logger.error(f"检查配置文件失败: {check_error}")
+                logger.error(f"错误类型: {type(check_error).__name__}")
+
+                # 如果是认证错误，不要尝试上传
+                if "AuthenticationFailed" in str(check_error):
+                    logger.error("认证失败，请检查存储账户密钥和系统时间")
+                    raise
+
+                # 如果是ResourceNotFound，可能是文件不存在，尝试创建
+                if "ResourceNotFound" in str(check_error):
+                    logger.info("可能是文件不存在，尝试创建...")
+                    try:
+                        config_content = self._generate_v2ray_config()
+                        config_json = json.dumps(config_content, indent=2)
+                        config_bytes = config_json.encode('utf-8')
+
+                        file_client.upload_file(
+                            data=config_bytes,
+                            length=len(config_bytes)
+                        )
+                        logger.info("V2Ray配置文件创建完成")
+                    except Exception as create_error:
+                        logger.error(f"创建配置文件也失败: {create_error}")
+                        raise
+                else:
+                    raise check_error
 
         except Exception as e:
             logger.error(f"处理V2Ray配置文件失败: {e}")
+            logger.error(f"错误类型: {type(e).__name__}")
+            logger.error(f"存储账户名: {self.config.storage_account_name}")
+            logger.error(f"文件共享名: {self.config.storage_file_share_name}")
+            logger.error(f"文件名: {self.config.storage_file_name}")
+            logger.error(f"账户URL: {account_url}")
+
+            # 如果是认证相关的错误，提供调试信息
+            if "AuthenticationFailed" in str(e) or "authentication" in str(e).lower():
+                logger.error("认证错误调试信息:")
+                logger.error(f"存储账户密钥长度: {len(self.storage_account_key) if self.storage_account_key else 0}")
+
+                # 检查时间同步
+                from datetime import datetime, timezone
+                current_time = datetime.now(timezone.utc)
+                logger.error(f"当前UTC时间: {current_time.isoformat()}")
+
             raise
 
     def _generate_v2ray_config(self) -> Dict[str, Any]:
@@ -329,7 +593,7 @@ class AzureManager:
                             "read_only": True
                         }
                     ],
-                    "command": ["v2ray", "-config=/etc/v2ray/config.json"]
+                    "command": ["v2ray", "run", "-c", "/etc/v2ray/config.json"]
                 }
             ],
             "os_type": "Linux",
