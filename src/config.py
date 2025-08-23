@@ -103,7 +103,19 @@ class Config:
         )
 
     def get_unique_name(self, base_name: str) -> str:
-        """生成唯一的资源名称"""
-        # 使用客户端ID的前8位作为后缀确保唯一性
+        """生成唯一的资源名称（不使用连字符）"""
         suffix = self.v2ray_client_id.replace('-', '')[:8].lower()
-        return f"{base_name}-{suffix}"
+        return f"{base_name.lower()}{suffix}"
+
+    def get_unique_dns_label(self) -> str:
+        """生成唯一的DNS标签名称（适用于Container Instance）"""
+        return self.get_unique_name(self.container_group_name)
+
+    def get_unique_storage_name(self) -> str:
+        """
+        生成全局唯一的存储账户名
+
+        注意：此方法通过在 storage_account_name 后附加 v2ray_client_id 的前8位（去除连字符）来保证唯一性。
+        请确保 v2ray_client_id 在不同部署间唯一，否则可能导致存储账户名冲突。
+        """
+        return self.get_unique_name(self.storage_account_name)

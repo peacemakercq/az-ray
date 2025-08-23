@@ -123,8 +123,7 @@ class AzureManager:
 
     async def _ensure_storage_account(self):
         """确保存储账户存在"""
-        storage_name = self.config.get_unique_name(
-            self.config.storage_account_name)
+        storage_name = self.config.get_unique_storage_name()
 
         try:
             self.storage_client.storage_accounts.get_properties(
@@ -311,7 +310,8 @@ class AzureManager:
                         "port": self.config.v2ray_port,
                         "protocol": "TCP"
                     }
-                ]
+                ],
+                "dns_name_label": self.config.get_unique_dns_label()
             },
             "volumes": [
                 {
@@ -334,7 +334,9 @@ class AzureManager:
         )
 
         result = poller.result()
-        logger.info(f"容器实例创建完成，FQDN: {result.ip_address.fqdn}")
+        fqdn = result.ip_address.fqdn if result.ip_address.fqdn else "未生成"
+        ip = result.ip_address.ip if result.ip_address else "未分配"
+        logger.info(f"容器实例创建完成，IP: {ip}, FQDN: {fqdn}")
         return result
 
     async def restart_container(self):
@@ -370,3 +372,22 @@ class AzureManager:
             return container_group.ip_address.fqdn if container_group.ip_address else None
         except Exception:
             return None
+
+    async def get_container_ip_info(self) -> Dict[str, Optional[str]]:
+        """获取容器的IP信息"""
+        try:
+            container_group = self.container_client.container_groups.get(
+                self.config.azure_resource_group,
+                self.config.container_group_name
+            )
+            if container_group.ip_address:
+                return {
+                    "ip": container_group.ip_address.ip,
+                    "fqdn": container_group.ip_address.fqdn,
+                    "dns_name_label": getattr(
+                        container_group.ip_address, 'dns_name_label', None
+                    )
+                }
+            return {"ip": None, "fqdn": None, "dns_name_label": None}
+        except Exception:
+            return {"ip": None, "fqdn": None, "dns_name_label": None}
