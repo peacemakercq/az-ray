@@ -19,7 +19,7 @@ from src.app import AzRayApp  # noqa: E402
 def setup_logging(verbose: bool = False):
     """设置日志配置"""
     level = logging.DEBUG if verbose else logging.INFO
-    
+
     # 如果环境变量中有LOG_LEVEL，优先使用
     if "LOG_LEVEL" in os.environ:
         level_str = os.environ["LOG_LEVEL"].upper()
@@ -31,7 +31,7 @@ def setup_logging(verbose: bool = False):
             level = logging.WARNING
         elif level_str == "ERROR":
             level = logging.ERROR
-    
+
     logging.basicConfig(
         level=level,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -75,16 +75,16 @@ def main():
         action="store_true",
         help="dry run模式，不执行实际操作"
     )
-    
+
     args = parser.parse_args()
-    
+
     # 设置日志
     setup_logging(args.verbose)
-    
+
     # 设置环境变量（如果需要）
     if args.dry_run:
         os.environ["DRY_RUN"] = "true"
-    
+
     # 运行应用
     try:
         asyncio.run(run_app())

@@ -5,7 +5,7 @@ from azure.identity import ClientSecretCredential
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
 from azure.mgmt.resource import ResourceManagementClient
 from azure.mgmt.storage import StorageManagementClient
-from azure.storage.fileshare import ShareFileClient
+from azure.storage.fileshare import ShareFileClient, ShareClient
 from azure.core.exceptions import ResourceNotFoundError, ResourceExistsError
 
 from .config import Config
@@ -141,16 +141,15 @@ class AzureManager:
                 f"https://{self.config.storage_account_name}"
                 f".file.core.windows.net"
             )
-            file_client = ShareFileClient(
+            share_client = ShareClient(
                 account_url=account_url,
                 share_name=self.config.storage_file_share_name,
-                file_path="",
                 credential=self.storage_account_key
             )
 
             # 创建文件共享（如果不存在）
             try:
-                file_client.get_share_client().create_share()
+                share_client.create_share()
                 logger.info(f"文件共享 {self.config.storage_file_share_name} 创建完成")
             except ResourceExistsError:
                 logger.info(f"文件共享 {self.config.storage_file_share_name} 已存在")
