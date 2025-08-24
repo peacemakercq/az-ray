@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   az-ray:
-    build: .
+    build: 
+      context: ..
+      dockerfile: docker/Dockerfile.multi
     container_name: az-ray
     ports:
       - "1080:1080"

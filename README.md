@@ -5,10 +5,11 @@
 ## 功能特性
 
 - 🌐 自动创建和管理Azure资源（Storage File + Container Instance）
-- 🔄 智能代理路由（仅代理被墙域名）
+- 🔄 智能代理路由（使用GeoIP智能分流）
 - 📊 连接质量监控和自动重启
 - 🐳 Docker容器化部署
 - ⚙️ 开发容器支持
+- 🛠️ Makefile 自动化工具
 
 ## 架构概述
 
@@ -21,10 +22,25 @@
 1. **启动时**：确保Azure资源存在（Storage File + ACI）
 2. **配置管理**：自动生成或更新V2Ray配置文件
 3. **本地代理**：启动SOCKS5代理服务
-4. **智能路由**：仅代理配置的域名请求
+4. **智能路由**：使用GeoIP数据库智能分流
 5. **健康监控**：每10分钟检测连接质量，必要时重启
 
-## 环境变量
+## 🚀 快速开始
+
+### 1. 设置开发环境
+
+```bash
+# 克隆项目
+git clone https://github.com/your-username/az-ray.git
+cd az-ray
+
+# 完整环境设置（推荐）
+make dev-setup
+```
+
+### 2. 配置环境变量
+
+编辑 `.env` 文件：
 
 ```bash
 # Azure认证
@@ -34,7 +50,7 @@ AZURE_TENANT_ID=your_tenant_id
 
 # V2Ray配置
 V2RAY_CLIENT_ID=your_uuid
-V2RAY_PORT=9088  # 可选，默认9088
+V2RAY_PORT=443  # WebSocket端口，默认443
 
 # 可选配置
 AZURE_SUBSCRIPTION_ID=your_subscription_id
@@ -45,6 +61,31 @@ HEALTH_CHECK_INTERVAL=600  # 秒
 
 # 域名文件路径（可选）
 DOMAIN_FILE=/path/to/domains.txt
+```
+
+### 3. 下载 GeoIP 数据
+
+```bash
+# 自动下载（需要网络可达GitHub）
+make update-geo
+
+# 或手动下载到 data/ 目录
+# - geoip.dat from https://github.com/v2fly/geoip/releases/latest
+# - geosite.dat from https://github.com/v2fly/domain-list-community/releases/latest
+```
+
+## 🛠️ 开发工具
+
+项目使用 Makefile 提供便捷的开发命令：
+
+```bash
+make help          # 显示所有可用命令
+make install       # 安装依赖
+make test          # 运行测试
+make lint          # 代码检查
+make run           # 运行应用
+make docker-build  # 构建Docker镜像
+make deploy        # 部署到Azure
 ```
 
 ## 快速开始
