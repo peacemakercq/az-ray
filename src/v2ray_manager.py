@@ -55,13 +55,10 @@ class V2RayManager:
             "log": {
                 "loglevel": "info"
             },
-            "geodata": {
-                "geoipFile": self.geoip_file,
-                "geositeFile": self.geosite_file
-            },
             "inbounds": [
                 {
                     "tag": "socks-in",
+                    "listen": "0.0.0.0",
                     "port": self.config.socks5_port,
                     "protocol": "socks",
                     "settings": {
