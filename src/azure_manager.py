@@ -295,7 +295,7 @@ class AzureManager:
             logger.info(f"找到活跃容器实例: {active_container.name}")
             
             # 检查容器状态
-            if active_container.instance_view.state != "Running":
+            if not active_container.ip_address.ip:
                 logger.info("容器实例未运行，创建新的容器实例...")
                 new_container_name = await self._create_new_container_instance()
                 # 清理旧容器
