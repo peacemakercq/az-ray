@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import time
 from typing import Optional, Dict, Any
 from azure.identity import ClientSecretCredential
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
@@ -111,30 +112,9 @@ class AzureManager:
 
     async def _clean_existing_container(self):
         """删除现有的容器实例（用于重新创建）"""
-        try:
-            # 检查容器实例是否存在
-            self.container_client.container_groups.get(
-                self.config.azure_resource_group, self.config.container_group_name
-            )
-
-            logger.warning(
-                f"正在删除容器实例 {self.config.container_group_name}..."
-            )
-
-            # 删除容器实例
-            poller = self.container_client.container_groups.begin_delete(
-                self.config.azure_resource_group, self.config.container_group_name
-            )
-
-            logger.info("等待容器实例删除完成...")
-            poller.wait()
-            logger.info(f"容器实例 {self.config.container_group_name} 删除完成")
-
-        except ResourceNotFoundError:
-            logger.info(f"容器实例 {self.config.container_group_name} 不存在，无需删除")
-        except Exception as e:
-            logger.error(f"删除容器实例失败: {e}")
-            raise
+        logger.info("正在清理所有现有容器实例...")
+        await self._cleanup_old_containers()
+        logger.info("现有容器实例清理完成")
 
     async def _clean_existing_resources(self):
         """删除现有的资源组及其所有资源（用于完全重新创建）"""
@@ -328,29 +308,126 @@ class AzureManager:
 
     async def _ensure_container_instance(self):
         """确保容器实例存在"""
-        # 如果是重新创建模式，直接创建新容器（因为旧的已经被删除了）
+        # 如果是重新创建模式，直接创建新容器（旧的已经被清理了）
         if os.getenv("RECREATE_RESOURCES") == "true":
-            logger.info(f"重新创建模式：正在创建容器实例 {self.config.container_group_name}...")
-            await self._create_container_instance()
+            new_container_name = await self._create_new_container_instance()
+            # 更新配置中的容器名称以供后续使用
+            self.config.container_group_name = new_container_name
             return
 
-        try:
-            container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group, self.config.container_group_name
-            )
-            logger.info(f"容器实例 {self.config.container_group_name} 已存在")
-
+        # 检查是否有现有的活跃容器
+        active_container = await self._get_active_container()
+        if active_container:
+            logger.info(f"找到活跃容器实例: {active_container.name}")
+            
             # 检查容器状态
-            if container_group.instance_view.state != "Running":
-                logger.info("容器实例未运行，正在启动...")
-                await self.restart_container()
+            if active_container.instance_view.state != "Running":
+                logger.info("容器实例未运行，创建新的容器实例...")
+                new_container_name = await self._create_new_container_instance()
+                # 清理旧容器
+                await self._cleanup_old_containers(keep_current=new_container_name)
+                self.config.container_group_name = new_container_name
+            else:
+                # 使用现有的活跃容器
+                self.config.container_group_name = active_container.name
+        else:
+            logger.info("没有找到现有容器实例，正在创建新的...")
+            new_container_name = await self._create_new_container_instance()
+            self.config.container_group_name = new_container_name
 
-        except ResourceNotFoundError:
-            logger.info(f"正在创建容器实例 {self.config.container_group_name}...")
-            await self._create_container_instance()
+    async def restart_container(self):
+        """重启容器实例（通过创建新容器实现）"""
+        logger.info("正在通过创建新容器来重启...")
+        
+        old_container_name = self.config.container_group_name
+        new_container_name = await self._create_new_container_instance()
+        
+        # 更新配置中的容器名称
+        self.config.container_group_name = new_container_name
+        
+        # 异步清理旧容器
+        await self._cleanup_old_containers(keep_current=new_container_name)
+        
+        logger.info(f"容器重启完成: {old_container_name} -> {new_container_name}")
 
-    async def _create_container_instance(self):
-        """创建容器实例"""
+    async def get_container_fqdn(self) -> Optional[str]:
+        """获取当前活跃容器的FQDN"""
+        try:
+            # 获取当前活跃的容器
+            active_container = await self._get_active_container()
+            if not active_container:
+                return None
+                
+            return (
+                active_container.ip_address.fqdn if active_container.ip_address else None
+            )
+        except Exception:
+            return None
+
+    async def get_container_ip(self) -> Optional[str]:
+        """获取当前活跃容器的IP地址"""
+        try:
+            # 获取当前活跃的容器
+            active_container = await self._get_active_container()
+            if not active_container:
+                return None
+                
+            return active_container.ip_address.ip if active_container.ip_address else None
+        except Exception:
+            return None
+
+    async def _find_existing_containers(self) -> list:
+        """查找所有带有指定前缀的容器实例"""
+        try:
+            prefix = self.config.get_container_name_prefix()
+            containers = []
+            
+            # 列出资源组中的所有容器组
+            container_groups = self.container_client.container_groups.list_by_resource_group(
+                self.config.azure_resource_group
+            )
+            
+            for container_group in container_groups:
+                if container_group.name.startswith(prefix):
+                    containers.append(container_group)
+            
+            return containers
+        except Exception as e:
+            logger.warning(f"查找现有容器时出错: {e}")
+            return []
+
+    async def _get_active_container(self):
+        """获取当前活跃的容器实例（最新创建的）"""
+        containers = await self._find_existing_containers()
+        if not containers:
+            return None
+        
+        # 按名称排序，返回最新的（因为名称包含时间戳）
+        containers.sort(key=lambda x: x.name, reverse=True)
+        return containers[0]
+
+    async def _cleanup_old_containers(self, keep_current: str = None):
+        """清理旧的容器实例，保留当前指定的容器"""
+        containers = await self._find_existing_containers()
+        
+        for container in containers:
+            if keep_current and container.name == keep_current:
+                continue
+                
+            logger.info(f"清理旧容器实例: {container.name}")
+            try:
+                # 异步删除，不等待完成
+                self.container_client.container_groups.begin_delete(
+                    self.config.azure_resource_group, container.name
+                )
+            except Exception as e:
+                logger.warning(f"删除容器 {container.name} 时出错: {e}")
+
+    async def _create_new_container_instance(self) -> str:
+        """创建新的容器实例，返回容器名称"""
+        new_container_name = self.config.get_unique_container_name()
+        logger.info(f"正在创建新容器实例: {new_container_name}")
+        
         container_group = {
             "location": self.config.azure_location,
             "containers": [
@@ -373,7 +450,7 @@ class AzureManager:
             "ip_address": {
                 "type": "Public",
                 "ports": [{"port": self.config.v2ray_port, "protocol": "TCP"}],
-                "dns_name_label": self.config.get_unique_dns_label(),
+                "dns_name_label": f"{self.config.get_unique_dns_label()}-{str(int(time.time()))[-6:]}",
             },
             "volumes": [
                 {
@@ -391,51 +468,13 @@ class AzureManager:
 
         poller = self.container_client.container_groups.begin_create_or_update(
             self.config.azure_resource_group,
-            self.config.container_group_name,
+            new_container_name,
             container_group,
         )
 
         result = poller.result()
         fqdn = result.ip_address.fqdn if result.ip_address.fqdn else "未生成"
         ip = result.ip_address.ip if result.ip_address else "未分配"
-        logger.info(f"容器实例创建完成，IP: {ip}, FQDN: {fqdn}")
-        return result
-
-    async def restart_container(self):
-        """重启容器实例"""
-        logger.info("正在重启容器实例...")
-
-        try:
-            # 重启容器组
-            poller = self.container_client.container_groups.begin_restart(
-                self.config.azure_resource_group, self.config.container_group_name
-            )
-            poller.wait()  # 等待重启完成
-
-            logger.info("容器实例重启完成")
-
-        except Exception as e:
-            logger.error(f"重启容器实例失败: {e}")
-            raise
-
-    async def get_container_fqdn(self) -> Optional[str]:
-        """获取容器的FQDN"""
-        try:
-            container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group, self.config.container_group_name
-            )
-            return (
-                container_group.ip_address.fqdn if container_group.ip_address else None
-            )
-        except Exception:
-            return None
-
-    async def get_container_ip(self) -> Optional[str]:
-        """获取容器的IP地址"""
-        try:
-            container_group = self.container_client.container_groups.get(
-                self.config.azure_resource_group, self.config.container_group_name
-            )
-            return container_group.ip_address.ip if container_group.ip_address else None
-        except Exception:
-            return None
+        logger.info(f"容器实例创建完成: {new_container_name}, IP: {ip}, FQDN: {fqdn}")
+        
+        return new_container_name

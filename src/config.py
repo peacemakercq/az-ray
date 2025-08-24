@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -177,3 +178,13 @@ class Config:
         请确保 v2ray_client_id 在不同部署间唯一，否则可能导致存储账户名冲突。
         """
         return self._get_unique_name(self.storage_account_name)
+
+    def get_unique_container_name(self) -> str:
+        """生成带时间戳的唯一容器组名称"""
+        timestamp = str(int(time.time()))[-6:]  # 使用时间戳的后6位
+        base_name = self.container_group_name
+        return f"{base_name}-{timestamp}"
+
+    def get_container_name_prefix(self) -> str:
+        """获取容器名称的固定前缀，用于查询"""
+        return self.container_group_name
