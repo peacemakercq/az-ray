@@ -73,32 +73,7 @@ class Config:
     def _initialize_domain_list(self):
         """初始化转发域名列表"""
 
-        # 默认列表
-        domain_list = [
-            "google.com",
-            "youtube.com",
-            "facebook.com",
-            "twitter.com",
-            "instagram.com",
-            "github.com",
-            "docker.com",
-            "gmail.com",
-            "blogspot.com",
-            "wikipedia.org",
-            "t.co",
-            "bit.ly",
-            "dropbox.com",
-            "pinterest.com",
-            "tumblr.com",
-            "reddit.com",
-            "vimeo.com",
-            "dailymotion.com",
-            "wordpress.com",
-            "flickr.com",
-            "imgur.com"
-        ]
-
-        # 从文件读取额外(如果指定了文件)
+        domain_list = []
         if self.domain_file:
             domain_list.extend(self._load_domains_from_file(self.domain_file))
 

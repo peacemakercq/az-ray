@@ -21,9 +21,7 @@ class TestConfigDomainFile:
         try:
             config = Config()
             assert config.domain_list is not None
-            assert len(config.domain_list) > 0
-            assert "domain:google.com" in config.domain_list
-            assert "domain:youtube.com" in config.domain_list
+            assert len(config.domain_list) == 0
         finally:
             # 清理环境变量
             keys = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
@@ -32,7 +30,7 @@ class TestConfigDomainFile:
                 os.environ.pop(key, None)
 
     def test_load_domains_from_file(self):
-        """测试从文件加载域名列表（会追加到默认列表）"""
+        """测试从文件加载域名列表"""
         # 创建临时域名文件
         with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
             f.write("""# 测试域名文件
@@ -59,8 +57,8 @@ invalid-domain-
             config = Config()
             
             # 验证加载的域名
-            # 文件中4个有效域名，默认列表有21个，合计25个（如有重复会保留多份）
-            assert len(config.domain_list) == 25
+            # 文件中4个有效域名（不再有默认列表）
+            assert len(config.domain_list) == 4
             assert "domain:google.com" in config.domain_list
             assert "domain:youtube.com" in config.domain_list
             assert "domain:facebook.com" in config.domain_list

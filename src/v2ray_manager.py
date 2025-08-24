@@ -94,6 +94,31 @@ class V2RayManager:
                 "rules": [
                     {
                         "type": "field",
+                        "domain": [
+                            "geosite:google",
+                            "geosite:gmail",
+                            "geosite:youtube",
+                            "geosite:twitter",
+                            "geosite:facebook",
+                            "geosite:github",
+                            "geosite:dockerhub",
+                            "geosite:telegram",
+                            "geosite:netflix",
+                        ],
+                        "outboundTag": "proxy"
+                    },
+                    {
+                        "type": "field",
+                        "ip": [
+                            "geoip:google",
+                            "geoip:telegram",
+                            "geoip:twitter",
+                            "geoip:facebook"
+                        ],
+                        "outboundTag": "proxy"
+                    },
+                    {
+                        "type": "field",
                         "domain": self.config.domain_list,  # 用户自定义域名
                         "outboundTag": "proxy"
                     },
