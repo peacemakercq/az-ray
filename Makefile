@@ -1,7 +1,7 @@
 # Az-Ray V2Ray Azure 自动化代理项目
 # Makefile for common development and deployment tasks
 
-.PHONY: help install test lint clean run deploy docker-build docker-run update-geo setup-env
+.PHONY: help install test lint clean run deploy docker-build docker-run setup-env
 
 # 默认目标
 help: ## 显示帮助信息
@@ -48,11 +48,6 @@ clean: ## 清理临时文件和缓存
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	rm -rf .pytest_cache/ .mypy_cache/ 2>/dev/null || true
 
-# GeoIP数据管理
-update-geo: ## 更新GeoIP/GeoSite数据
-	@echo "🌐 更新GeoIP数据..."
-	./scripts/update-geo-data.sh
-
 # Docker操作
 docker-build: ## 构建Docker镜像
 	@echo "🐳 构建Docker镜像..."
@@ -82,7 +77,7 @@ deploy-local: ## 本地测试部署
 	$(MAKE) docker-run
 
 # 开发工具
-dev-setup: install setup-env update-geo ## 完整开发环境设置
+dev-setup: install setup-env ## 完整开发环境设置
 	@echo "✅ 开发环境设置完成"
 	@echo "📝 请编辑 .env 文件配置Azure凭据"
 	@echo "🚀 运行 'make run' 启动应用"

@@ -63,17 +63,6 @@ HEALTH_CHECK_INTERVAL=600  # 秒
 DOMAIN_FILE=/path/to/domains.txt
 ```
 
-### 3. 下载 GeoIP 数据
-
-```bash
-# 自动下载（需要网络可达GitHub）
-make update-geo
-
-# 或手动下载到 data/ 目录
-# - geoip.dat from https://github.com/v2fly/geoip/releases/latest
-# - geosite.dat from https://github.com/v2fly/domain-list-community/releases/latest
-```
-
 ## 🛠️ 开发工具
 
 项目使用 Makefile 提供便捷的开发命令：

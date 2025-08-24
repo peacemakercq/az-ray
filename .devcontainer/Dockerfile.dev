@@ -16,6 +16,10 @@ RUN wget -O /tmp/v2ray.zip https://github.com/v2fly/v2ray-core/releases/latest/d
     && chmod +x /usr/local/bin/v2ray \
     && rm -rf /tmp/v2ray*
 
+# 下载GeoIP和GeoSite数据
+RUN wget -O /usr/local/bin/geoip.dat https://github.com/v2fly/geoip/releases/latest/download/geoip.dat \
+    && wget -O /usr/local/bin/geosite.dat https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat
+
 # 设置Python环境
 ENV PYTHONPATH=/app
 WORKDIR /app
