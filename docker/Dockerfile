@@ -29,6 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # 复制应用代码
 COPY src/ ./src/
+COPY __main__.py ./
 
 # 创建非root用户
 RUN useradd -m -u 1000 azray && chown -R azray:azray /app
@@ -36,10 +37,6 @@ USER azray
 
 # 暴露SOCKS5端口
 EXPOSE 1080
-
-# 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f --socks5 127.0.0.1:1080 http://www.google.com || exit 1
 
 # 启动应用
 CMD ["python", "__main__.py"]
