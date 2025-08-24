@@ -22,8 +22,6 @@ def mock_config():
 def mock_azure_manager():
     """模拟Azure管理器"""
     manager = Mock(spec=AzureManager)
-    manager.get_container_fqdn = AsyncMock(
-        return_value="test.eastus.azurecontainer.io")
     manager.get_container_ip = AsyncMock(
         return_value="20.21.22.23")
     return manager

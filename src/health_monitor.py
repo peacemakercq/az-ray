@@ -135,7 +135,7 @@ class HealthMonitor:
             # 等待容器启动
             await asyncio.sleep(30)
 
-            # 重启本地V2Ray（以获取新的FQDN）
+            # 重启本地V2Ray（以获取新的IP地址）
             await self.v2ray_manager.restart()
 
             # 重置失败计数

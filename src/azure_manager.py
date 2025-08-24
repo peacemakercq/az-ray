@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import time
 from typing import Optional, Dict, Any
 from azure.identity import ClientSecretCredential
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
@@ -325,20 +324,6 @@ class AzureManager:
         
         logger.info(f"容器重启完成: {old_container_name} -> {new_container_name}")
 
-    async def get_container_fqdn(self) -> Optional[str]:
-        """获取当前活跃容器的FQDN"""
-        try:
-            # 获取当前活跃的容器
-            active_container = await self._get_active_container()
-            if not active_container:
-                return None
-                
-            return (
-                active_container.ip_address.fqdn if active_container.ip_address else None
-            )
-        except Exception:
-            return None
-
     async def get_container_ip(self) -> Optional[str]:
         """获取当前活跃容器的IP地址"""
         try:
@@ -424,8 +409,7 @@ class AzureManager:
             "os_type": "Linux",
             "ip_address": {
                 "type": "Public",
-                "ports": [{"port": self.config.v2ray_port, "protocol": "TCP"}],
-                "dns_name_label": f"{self.config.get_unique_dns_label()}-{str(int(time.time()))[-6:]}",
+                "ports": [{"port": self.config.v2ray_port, "protocol": "TCP"}]
             },
             "volumes": [
                 {
@@ -448,8 +432,7 @@ class AzureManager:
         )
 
         result = poller.result()
-        fqdn = result.ip_address.fqdn if result.ip_address.fqdn else "未生成"
         ip = result.ip_address.ip if result.ip_address else "未分配"
-        logger.info(f"容器实例创建完成: {new_container_name}, IP: {ip}, FQDN: {fqdn}")
+        logger.info(f"容器实例创建完成: {new_container_name}, IP: {ip}")
         
         return new_container_name

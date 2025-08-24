@@ -163,12 +163,9 @@ class Config:
 
     def _get_unique_name(self, base_name: str) -> str:
         """生成唯一的资源名称（不使用连字符）"""
+        assert self.v2ray_client_id is not None, "v2ray_client_id must be set"
         suffix = self.v2ray_client_id.replace('-', '')[:8].lower()
         return f"{base_name.lower()}{suffix}"
-
-    def get_unique_dns_label(self) -> str:
-        """生成唯一的DNS标签名称（适用于Container Instance）"""
-        return self._get_unique_name(self.container_group_name)
 
     def get_unique_storage_name(self) -> str:
         """
