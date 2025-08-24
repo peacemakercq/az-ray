@@ -47,12 +47,12 @@ class V2RayManager:
         # 生成客户端配置
         client_config = {
             "log": {
-                "loglevel": "info"
+                "loglevel": "warning"
             },
             "inbounds": [
                 {
                     "tag": "socks-in",
-                    "listen": "0.0.0.0",
+                    "listen": "127.0.0.1",  # 明确指定IPv4本地监听
                     "port": self.config.socks5_port,
                     "protocol": "socks",
                     "settings": {
@@ -111,6 +111,7 @@ class V2RayManager:
                     },
                     {
                         "type": "field",
+                        "network": "tcp,udp",  # 匹配所有网络流量
                         "outboundTag": "proxy"  # 默认走代理
                     }
                 ]
@@ -138,8 +139,12 @@ class V2RayManager:
                 ["v2ray", "run", "-c", self.config_file],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                universal_newlines=True
+                universal_newlines=True,
+                bufsize=1  # 行缓冲，确保实时输出
             )
+
+            # 启动日志转发任务
+            asyncio.create_task(self._forward_v2ray_logs())
 
             # 等待一下确保进程启动
             await asyncio.sleep(2)
@@ -193,6 +198,44 @@ class V2RayManager:
 
         await self.start()
         logger.info("V2Ray代理重启完成")
+
+    async def _forward_v2ray_logs(self):
+        """转发V2Ray的日志输出到Python日志系统"""
+        if not self.process:
+            return
+
+        # 创建V2Ray专用的logger
+        v2ray_logger = logging.getLogger("v2ray")
+        
+        try:
+            # 同时读取stdout和stderr
+            tasks = []
+            if self.process.stdout:
+                tasks.append(self._read_stream(self.process.stdout, v2ray_logger.info))
+            if self.process.stderr:
+                tasks.append(self._read_stream(self.process.stderr, v2ray_logger.warning))
+            
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+                
+        except Exception as e:
+            logger.warning(f"V2Ray日志转发出错: {e}")
+
+    async def _read_stream(self, stream, log_func):
+        """读取流并记录日志"""
+        try:
+            while True:
+                line = await asyncio.to_thread(stream.readline)
+                if not line:  # EOF
+                    break
+                
+                # 清理行尾并记录日志
+                line = line.strip()
+                if line:  # 只记录非空行
+                    log_func(f"[V2Ray] {line}")
+                    
+        except Exception as e:
+            logger.warning(f"读取V2Ray日志流时出错: {e}")
 
     def is_running(self) -> bool:
         """检查V2Ray是否正在运行"""

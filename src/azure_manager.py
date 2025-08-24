@@ -150,6 +150,7 @@ class AzureManager:
     @retry_with_backoff(max_attempts=30, base_delay=3.0)
     async def _wait_for_storage_account_ready(self, storage_name: str) -> str:
         """等待存储账户完全就绪并返回访问密钥"""
+
         # 1. 检查存储账户状态
         props = self.storage_client.storage_accounts.get_properties(
             self.config.azure_resource_group, storage_name
@@ -178,6 +179,8 @@ class AzureManager:
             if "AuthenticationFailed" in str(e):
                 raise RuntimeError("存储账户认证失败，尚未就绪")
             # 其他错误可能也表示服务可用
+        
+        return keys.keys[0].value
 
     async def _ensure_storage_account(self):
         """确保存储账户存在并完全可用"""
