@@ -55,6 +55,13 @@ class V2RayManager:
                         "auth": "noauth",
                         "udp": True
                     }
+                },
+                {
+                    "tag": "http-in",
+                    "listen": "0.0.0.0",  # HTTP代理监听
+                    "port": self.config.http_port,
+                    "protocol": "http",
+                    "settings": {}
                 }
             ],
             "outbounds": [
@@ -140,7 +147,7 @@ class V2RayManager:
             logger.warning("V2Ray已在运行")
             return
 
-        logger.info(f"正在启动V2Ray代理，监听端口: {self.config.socks5_port}")
+        logger.info(f"正在启动V2Ray代理，SOCKS5端口: {self.config.socks5_port}, HTTP端口: {self.config.http_port}")
 
         try:
             # 启动V2Ray进程

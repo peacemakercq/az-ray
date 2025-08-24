@@ -11,6 +11,7 @@ def mock_config():
     """模拟配置"""
     config = Mock(spec=Config)
     config.socks5_port = 1080
+    config.http_port = 1081
     config.v2ray_port = 9088
     config.v2ray_path = "/v2ray"
     config.v2ray_client_id = "550e8400-e29b-41d4-a716-446655440000"

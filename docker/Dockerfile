@@ -35,8 +35,8 @@ COPY __main__.py ./
 RUN useradd -m -u 1000 azray && chown -R azray:azray /app
 USER azray
 
-# 暴露SOCKS5端口
-EXPOSE 1080
+# 暴露SOCKS5和HTTP端口
+EXPOSE 1080 1081
 
 # 启动应用
 CMD ["python", "__main__.py"]

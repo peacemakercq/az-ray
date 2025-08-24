@@ -33,6 +33,7 @@ class Config:
 
     # 本地配置
     socks5_port: int = 1080
+    http_port: int = 1081
     health_check_interval: int = 600  # 10分钟
 
     # 转发域名列表
@@ -59,6 +60,7 @@ class Config:
 
         self.v2ray_port = int(os.getenv("V2RAY_PORT", self.v2ray_port))
         self.socks5_port = int(os.getenv("SOCKS5_PORT", self.socks5_port))
+        self.http_port = int(os.getenv("HTTP_PORT", self.http_port))
         self.health_check_interval = int(os.getenv("HEALTH_CHECK_INTERVAL", self.health_check_interval))
 
         # 初始化转发域名列表
