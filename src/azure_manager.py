@@ -253,11 +253,11 @@ class AzureManager:
 
     @retry_with_backoff(max_attempts=3, base_delay=1.0)
     async def _ensure_v2ray_config(self):
-        """确保V2Ray配置文件存在"""
+        """确保V2Ray配置文件存在（总是覆盖）"""
         account_url = (
             f"https://{self.config.storage_account_name}.file.core.windows.net"
         )
-        logger.info("确保V2Ray配置文件存在")
+        logger.info("生成并上传V2Ray配置文件（覆盖模式）...")
 
         file_client = ShareFileClient(
             account_url=account_url,
@@ -266,17 +266,13 @@ class AzureManager:
             credential=self.storage_account_key,
         )
 
-        try:
-            properties = file_client.get_file_properties()
-            logger.info(f"V2Ray配置文件已存在，大小: {properties.size} bytes")
-        except ResourceNotFoundError:
-            logger.info("生成并上传V2Ray配置文件...")
-            config_content = self._generate_v2ray_config()
-            config_json = json.dumps(config_content, indent=2)
-            config_bytes = config_json.encode("utf-8")
+        # 总是重新生成并上传配置文件
+        config_content = self._generate_v2ray_config()
+        config_json = json.dumps(config_content, indent=2)
+        config_bytes = config_json.encode("utf-8")
 
-            file_client.upload_file(data=config_bytes, length=len(config_bytes))
-            logger.info(f"V2Ray配置文件上传完成，大小: {len(config_bytes)} bytes")
+        file_client.upload_file(data=config_bytes, length=len(config_bytes), overwrite=True)
+        logger.info(f"V2Ray配置文件上传完成，大小: {len(config_bytes)} bytes")
 
     def _generate_v2ray_config(self) -> Dict[str, Any]:
         """生成V2Ray服务器配置"""
