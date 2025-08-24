@@ -88,9 +88,9 @@ class AzureManager:
         """确保所有必需的Azure资源存在"""
         logger.info("正在检查Azure资源...")
 
-        # 如果指定了重新创建选项，先删除现有资源组
+        # 如果指定了重新创建选项，先删除现有容器实例
         if os.getenv("RECREATE_RESOURCES") == "true":
-            await self._clean_existing_resources()
+            await self._clean_existing_container()
 
         # 确保资源组存在
         await self._ensure_resource_group()
@@ -109,8 +109,35 @@ class AzureManager:
 
         logger.info("所有Azure资源检查完成")
 
+    async def _clean_existing_container(self):
+        """删除现有的容器实例（用于重新创建）"""
+        try:
+            # 检查容器实例是否存在
+            self.container_client.container_groups.get(
+                self.config.azure_resource_group, self.config.container_group_name
+            )
+
+            logger.warning(
+                f"正在删除容器实例 {self.config.container_group_name}..."
+            )
+
+            # 删除容器实例
+            poller = self.container_client.container_groups.begin_delete(
+                self.config.azure_resource_group, self.config.container_group_name
+            )
+
+            logger.info("等待容器实例删除完成...")
+            poller.wait()
+            logger.info(f"容器实例 {self.config.container_group_name} 删除完成")
+
+        except ResourceNotFoundError:
+            logger.info(f"容器实例 {self.config.container_group_name} 不存在，无需删除")
+        except Exception as e:
+            logger.error(f"删除容器实例失败: {e}")
+            raise
+
     async def _clean_existing_resources(self):
-        """删除现有的资源组及其所有资源（用于重新创建）"""
+        """删除现有的资源组及其所有资源（用于完全重新创建）"""
         try:
             # 检查资源组是否存在
             self.resource_client.resource_groups.get(self.config.azure_resource_group)
@@ -301,6 +328,12 @@ class AzureManager:
 
     async def _ensure_container_instance(self):
         """确保容器实例存在"""
+        # 如果是重新创建模式，直接创建新容器（因为旧的已经被删除了）
+        if os.getenv("RECREATE_RESOURCES") == "true":
+            logger.info(f"重新创建模式：正在创建容器实例 {self.config.container_group_name}...")
+            await self._create_container_instance()
+            return
+
         try:
             container_group = self.container_client.container_groups.get(
                 self.config.azure_resource_group, self.config.container_group_name

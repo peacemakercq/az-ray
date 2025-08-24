@@ -77,7 +77,7 @@ def main():
     parser.add_argument(
         "--recreate",
         action="store_true",
-        help="删除现有资源组并重新创建所有资源"
+        help="删除现有容器实例并重新创建（保留存储账户和其他资源）"
     )
 
     args = parser.parse_args()
