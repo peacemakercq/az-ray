@@ -167,8 +167,10 @@ class V2RayManager:
             # 启动日志转发任务
             asyncio.create_task(self._forward_v2ray_logs())
 
-            # 等待一下确保进程启动
-            await asyncio.sleep(10)
+            # 等待一下确保进程启动（可通过V2RAY_WAIT_TIME环境变量控制）
+            wait_time = int(os.getenv("V2RAY_WAIT_TIME", "10"))
+            if wait_time > 0:
+                await asyncio.sleep(wait_time)
 
             # 检查进程是否正常运行
             if self.process.poll() is not None:

@@ -1,4 +1,5 @@
 import pytest
+import os
 from unittest.mock import Mock, AsyncMock, patch
 from src.config import Config
 from src.v2ray_manager import V2RayManager
@@ -30,7 +31,14 @@ def mock_azure_manager():
 @pytest.fixture
 def v2ray_manager(mock_config, mock_azure_manager):
     """V2Ray管理器实例"""
-    return V2RayManager(mock_config, mock_azure_manager)
+    # 设置V2RAY_WAIT_TIME为0以加速测试
+    os.environ["V2RAY_WAIT_TIME"] = "0"
+    manager = V2RayManager(mock_config, mock_azure_manager)
+    
+    yield manager
+    
+    # 清理环境变量
+    os.environ.pop("V2RAY_WAIT_TIME", None)
 
 
 class TestV2RayManager:
