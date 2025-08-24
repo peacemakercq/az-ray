@@ -179,7 +179,6 @@ class AzureManager:
                 raise RuntimeError("存储账户认证失败，尚未就绪")
             # 其他错误可能也表示服务可用
 
-        return keys.keys[0].value
 
     async def _ensure_storage_account(self):
         """确保存储账户存在并完全可用"""
