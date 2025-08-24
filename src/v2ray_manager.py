@@ -48,7 +48,7 @@ class V2RayManager:
             "inbounds": [
                 {
                     "tag": "socks-in",
-                    "listen": "127.0.0.1",  # 明确指定IPv4本地监听
+                    "listen": "0.0.0.0",  # 明确指定IPv4本地监听
                     "port": self.config.socks5_port,
                     "protocol": "socks",
                     "settings": {
@@ -96,24 +96,12 @@ class V2RayManager:
                         "type": "field",
                         "domain": [
                             "geosite:google",
-                            "geosite:gmail",
                             "geosite:youtube",
                             "geosite:twitter",
                             "geosite:facebook",
                             "geosite:github",
-                            "geosite:dockerhub",
                             "geosite:telegram",
                             "geosite:netflix",
-                        ],
-                        "outboundTag": "proxy"
-                    },
-                    {
-                        "type": "field",
-                        "ip": [
-                            "geoip:google",
-                            "geoip:telegram",
-                            "geoip:twitter",
-                            "geoip:facebook"
                         ],
                         "outboundTag": "proxy"
                     },
