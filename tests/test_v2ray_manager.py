@@ -13,7 +13,7 @@ def mock_config():
     config.v2ray_port = 9088
     config.v2ray_path = "/v2ray"
     config.v2ray_client_id = "550e8400-e29b-41d4-a716-446655440000"
-    config.domain_list = ["google.com", "youtube.com"]
+    config.domain_list = ["domain:google.com", "domain:youtube.com"]
     config.domain_file = None
     return config
 

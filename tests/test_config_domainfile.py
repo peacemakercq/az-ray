@@ -22,8 +22,8 @@ class TestConfigDomainFile:
             config = Config()
             assert config.domain_list is not None
             assert len(config.domain_list) > 0
-            assert "google.com" in config.domain_list
-            assert "youtube.com" in config.domain_list
+            assert "domain:google.com" in config.domain_list
+            assert "domain:youtube.com" in config.domain_list
         finally:
             # 清理环境变量
             keys = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
@@ -61,10 +61,10 @@ invalid-domain-
             # 验证加载的域名
             # 文件中4个有效域名，默认列表有21个，合计25个（如有重复会保留多份）
             assert len(config.domain_list) == 25
-            assert "google.com" in config.domain_list
-            assert "youtube.com" in config.domain_list
-            assert "facebook.com" in config.domain_list
-            assert "twitter.com" in config.domain_list
+            assert "domain:google.com" in config.domain_list
+            assert "domain:youtube.com" in config.domain_list
+            assert "domain:facebook.com" in config.domain_list
+            assert "domain:twitter.com" in config.domain_list
             assert "invalid-domain-" not in config.domain_list  # 无效域名被跳过
             
         finally:

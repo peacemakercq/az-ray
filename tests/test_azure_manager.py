@@ -21,7 +21,7 @@ def mock_config():
     config.container_group_name = "test-container"
     config.container_name = "v2ray"
     config.container_image = "v2fly/v2fly-core:latest"
-    config.v2ray_port = 9088
+    config.v2ray_port = 443
     config.v2ray_path = "/v2ray"
     config.get_unique_name = Mock(side_effect=lambda x: f"{x}-test")
     return config
@@ -78,7 +78,7 @@ class TestAzureManager:
         assert "log" in config
         assert "inbounds" in config
         assert "outbounds" in config
-        assert config["inbounds"][0]["port"] == 9088
+        assert config["inbounds"][0]["port"] == 443
         assert config["inbounds"][0]["protocol"] == "vmess"
         client_id = config["inbounds"][0]["settings"]["clients"][0]["id"]
         assert client_id == "550e8400-e29b-41d4-a716-446655440000"
@@ -102,7 +102,8 @@ class TestAzureManager:
             os.environ["V2RAY_CLIENT_ID"] = "550e8400-e29b-41d4-a716-446655440000"
             
             config = Config()
-            assert config.v2ray_port == 9088, f"期望默认端口9088，实际{config.v2ray_port}"
+            # 测试默认端口为443（WebSocket）
+            assert config.v2ray_port == 443, f"期望默认端口443（WebSocket），实际{config.v2ray_port}"
             
             # 测试环境变量override
             os.environ["V2RAY_PORT"] = "8443"

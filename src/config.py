@@ -27,8 +27,8 @@ class Config:
 
     # V2Ray配置
     v2ray_client_id: Optional[str] = None
-    v2ray_port: int = 9088  # 默认端口
-    v2ray_path: str = "/azrayws"  # 保留以备将来使用
+    v2ray_port: int = 443  # WebSocket端口
+    v2ray_path: str = "/azrayws"  # WebSocket路径
 
     # 本地配置
     socks5_port: int = 1080
@@ -73,7 +73,7 @@ class Config:
         """初始化转发域名列表"""
 
         # 默认列表
-        self.domain_list = [
+        domain_list = [
             "google.com",
             "youtube.com",
             "facebook.com",
@@ -99,7 +99,10 @@ class Config:
 
         # 从文件读取额外(如果指定了文件)
         if self.domain_file:
-            self.domain_list.extend(self._load_domains_from_file(self.domain_file))
+            domain_list.extend(self._load_domains_from_file(self.domain_file))
+
+        # google.com -> domain:google.com以匹配所有子域名
+        self.domain_list = [f"domain:{d}" for d in domain_list]
 
     def reload_domain_list(self):
         """重新加载域名列表"""

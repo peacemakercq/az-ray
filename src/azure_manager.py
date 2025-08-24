@@ -287,28 +287,9 @@ class AzureManager:
                         "clients": [{"id": self.config.v2ray_client_id, "alterId": 0}]
                     },
                     "streamSettings": {
-                        "network": "tcp",
-                        "tcpSettings": {
-                            "header": {
-                                "type": "http",
-                                "response": {
-                                    "version": "1.1",
-                                    "status": "200",
-                                    "reason": "OK",
-                                    "headers": {
-                                        "Content-Type": [
-                                            "application/octet-stream",
-                                            "video/mpeg",
-                                            "application/x-msdownload",
-                                            "text/html",
-                                            "application/x-shockwave-flash",
-                                        ],
-                                        "Transfer-Encoding": ["chunked"],
-                                        "Connection": ["keep-alive"],
-                                        "Pragma": "no-cache",
-                                    },
-                                },
-                            }
+                        "network": "ws",
+                        "wsSettings": {
+                            "path": self.config.v2ray_path
                         },
                         "security": "none",
                     },
