@@ -133,14 +133,14 @@ class AzureManager:
         """等待存储账户完全就绪并返回访问密钥"""
 
         # 1. 检查存储账户状态
-        props = self.storage_client.storage_accounts.get_properties(
+        props = self.storage_client.storage_accounts.get_properties(  # type: ignore[union-attr]
             self.config.azure_resource_group, storage_name
         )
         if props.provisioning_state != "Succeeded":
             raise RuntimeError(f"存储账户状态: {props.provisioning_state}")
 
         # 2. 尝试获取密钥
-        keys = self.storage_client.storage_accounts.list_keys(
+        keys = self.storage_client.storage_accounts.list_keys(  # type: ignore[union-attr]
             self.config.azure_resource_group, storage_name
         )
         if not keys.keys:
@@ -161,7 +161,7 @@ class AzureManager:
                 raise RuntimeError("存储账户认证失败，尚未就绪")
             # 其他错误可能也表示服务可用
         
-        return keys.keys[0].value
+        return keys.keys[0].value  # type: ignore[return-value]
 
     async def _ensure_storage_account(self):
         """确保存储账户存在并完全可用"""
@@ -343,12 +343,12 @@ class AzureManager:
             containers = []
             
             # 列出资源组中的所有容器组
-            container_groups = self.container_client.container_groups.list_by_resource_group(
+            container_groups = self.container_client.container_groups.list_by_resource_group(  # type: ignore[union-attr]
                 self.config.azure_resource_group
             )
             
             for container_group in container_groups:
-                if container_group.name.startswith(prefix):
+                if container_group.name.startswith(prefix):  # type: ignore[union-attr]
                     containers.append(container_group)
             
             return containers
@@ -366,7 +366,7 @@ class AzureManager:
         containers.sort(key=lambda x: x.name, reverse=True)
         return containers[0]
 
-    async def _cleanup_old_containers(self, keep_current: str = None):
+    async def _cleanup_old_containers(self, keep_current: Optional[str] = None):  # type: ignore[assignment]
         """清理旧的容器实例，保留当前指定的容器"""
         containers = await self._find_existing_containers()
         
@@ -377,7 +377,7 @@ class AzureManager:
             logger.info(f"清理旧容器实例: {container.name}")
             try:
                 # 异步删除，不等待完成
-                self.container_client.container_groups.begin_delete(
+                self.container_client.container_groups.begin_delete(  # type: ignore[union-attr]
                     self.config.azure_resource_group, container.name
                 )
             except Exception as e:
@@ -425,7 +425,7 @@ class AzureManager:
             "restart_policy": "Always",
         }
 
-        poller = self.container_client.container_groups.begin_create_or_update(
+        poller = self.container_client.container_groups.begin_create_or_update(  # type: ignore[union-attr, call-overload]
             self.config.azure_resource_group,
             new_container_name,
             container_group,
