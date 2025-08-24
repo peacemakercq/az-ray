@@ -4,6 +4,7 @@ import logging
 import subprocess
 import tempfile
 import os
+from pathlib import Path
 from typing import Optional
 
 from .config import Config
@@ -20,6 +21,11 @@ class V2RayManager:
         self.azure_manager = azure_manager
         self.process: Optional[subprocess.Popen] = None
         self.config_file: Optional[str] = None
+        
+        # 设置GeoIP文件路径（项目内置）
+        project_root = Path(__file__).parent.parent
+        self.geoip_file = str(project_root / "data" / "geoip.dat")
+        self.geosite_file = str(project_root / "data" / "geosite.dat")
 
     async def initialize(self):
         """初始化V2Ray管理器"""
@@ -97,26 +103,35 @@ class V2RayManager:
                 "rules": [
                     {
                         "type": "field",
-                        "domain": self.config.domain_list,
+                        "domain": self.config.domain_list,  # 用户自定义域名
                         "outboundTag": "proxy"
                     },
                     {
                         "type": "field",
                         "ip": [
-                            "10.0.0.0/8",
-                            "172.16.0.0/12",
-                            "192.168.0.0/16",
-                            "127.0.0.0/8"
+                            "geoip:private",      # 私有网络
+                            "geoip:cn"            # 中国大陆IP
                         ],
                         "outboundTag": "direct"
                     },
                     {
                         "type": "field",
-                        "outboundTag": "direct"
+                        "outboundTag": "proxy"  # 默认走代理
                     }
                 ]
             }
         }
+
+        # 如果GeoIP和GeoSite文件存在，添加到配置中
+        if os.path.exists(self.geoip_file) and os.path.exists(self.geosite_file):
+            client_config["asset"] = {
+                "geoip_file": self.geoip_file,
+                "geosite_file": self.geosite_file
+            }
+            logger.info(f"使用本地GeoIP文件: {self.geoip_file}")
+            logger.info(f"使用本地GeoSite文件: {self.geosite_file}")
+        else:
+            logger.warning("GeoIP/GeoSite文件不存在，请运行 ./scripts/update-geo-data.sh 下载")
 
         # 保存配置到临时文件
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
