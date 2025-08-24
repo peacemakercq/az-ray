@@ -55,6 +55,10 @@ class V2RayManager:
             "log": {
                 "loglevel": "info"
             },
+            "geodata": {
+                "geoipFile": self.geoip_file,
+                "geositeFile": self.geosite_file
+            },
             "inbounds": [
                 {
                     "tag": "socks-in",
@@ -121,17 +125,6 @@ class V2RayManager:
                 ]
             }
         }
-
-        # 如果GeoIP和GeoSite文件存在，添加到配置中
-        if os.path.exists(self.geoip_file) and os.path.exists(self.geosite_file):
-            client_config["asset"] = {
-                "geoip_file": self.geoip_file,
-                "geosite_file": self.geosite_file
-            }
-            logger.info(f"使用本地GeoIP文件: {self.geoip_file}")
-            logger.info(f"使用本地GeoSite文件: {self.geosite_file}")
-        else:
-            logger.warning("GeoIP/GeoSite文件不存在，请运行 ./scripts/update-geo-data.sh 下载")
 
         # 保存配置到临时文件
         with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
