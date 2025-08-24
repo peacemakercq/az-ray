@@ -269,7 +269,7 @@ class AzureManager:
         config_json = json.dumps(config_content, indent=2)
         config_bytes = config_json.encode("utf-8")
 
-        file_client.upload_file(data=config_bytes, length=len(config_bytes), overwrite=True)
+        file_client.upload_file(data=config_bytes, length=len(config_bytes))
         logger.info(f"V2Ray配置文件上传完成，大小: {len(config_bytes)} bytes")
 
     def _generate_v2ray_config(self) -> Dict[str, Any]:
