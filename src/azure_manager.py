@@ -116,31 +116,6 @@ class AzureManager:
         await self._cleanup_old_containers()
         logger.info("现有容器实例清理完成")
 
-    async def _clean_existing_resources(self):
-        """删除现有的资源组及其所有资源（用于完全重新创建）"""
-        try:
-            # 检查资源组是否存在
-            self.resource_client.resource_groups.get(self.config.azure_resource_group)
-
-            logger.warning(
-                f"正在删除资源组 {self.config.azure_resource_group} " f"及其所有资源..."
-            )
-
-            # 删除资源组（这会自动删除其中的所有资源）
-            poller = self.resource_client.resource_groups.begin_delete(
-                self.config.azure_resource_group
-            )
-
-            logger.info("等待资源组删除完成...")
-            poller.wait()
-            logger.info(f"资源组 {self.config.azure_resource_group} 删除完成")
-
-        except ResourceNotFoundError:
-            logger.info(f"资源组 {self.config.azure_resource_group} 不存在，无需删除")
-        except Exception as e:
-            logger.error(f"删除资源组失败: {e}")
-            raise
-
     async def _ensure_resource_group(self):
         """确保资源组存在"""
         try:

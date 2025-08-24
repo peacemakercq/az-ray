@@ -1,5 +1,6 @@
 import pytest
-from unittest.mock import Mock, AsyncMock
+import os
+from unittest.mock import Mock, AsyncMock, patch
 from src.config import Config
 from src.azure_manager import AzureManager
 
@@ -122,3 +123,118 @@ class TestAzureManager:
                          "AZURE_SUBSCRIPTION_ID", "V2RAY_CLIENT_ID"]
             for var in test_vars:
                 os.environ.pop(var, None)
+
+
+class TestAzureManagerContainerOperations:
+    """测试新的容器管理操作"""
+    
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
+        """测试前设置"""
+        os.environ["AZURE_CLIENT_ID"] = "test-client-id"
+        os.environ["AZURE_CLIENT_SECRET"] = "test-client-secret"
+        os.environ["AZURE_TENANT_ID"] = "test-tenant-id"
+        os.environ["AZURE_SUBSCRIPTION_ID"] = "test-subscription-id"
+        os.environ["AZURE_RESOURCE_GROUP"] = "test-rg"
+        os.environ["V2RAY_CLIENT_ID"] = "550e8400-e29b-41d4-a716-446655440000"
+        
+        self.config = Config()
+        self.azure_manager = AzureManager(self.config)
+        
+        # Cleanup after test
+        yield
+        test_vars = ["AZURE_CLIENT_ID", "AZURE_CLIENT_SECRET", "AZURE_TENANT_ID",
+                     "AZURE_SUBSCRIPTION_ID", "AZURE_RESOURCE_GROUP", "V2RAY_CLIENT_ID"]
+        for var in test_vars:
+            os.environ.pop(var, None)
+    
+    @patch('src.azure_manager.ContainerInstanceManagementClient')
+    @pytest.mark.asyncio
+    async def test_find_existing_containers(self, mock_client_class):
+        """测试查找现有容器"""
+        # 模拟客户端
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+        self.azure_manager.container_client = mock_client
+        
+        # 模拟容器列表 - 使用正确的前缀
+        mock_container1 = Mock()
+        mock_container1.name = "azraycontainer-20240101120000"
+        mock_container1.location = "eastus"
+        mock_container1.instance_view.current_state.state = "Running"
+        
+        mock_container2 = Mock()
+        mock_container2.name = "azraycontainer-20240101130000"
+        mock_container2.location = "eastus"
+        mock_container2.instance_view.current_state.state = "Succeeded"
+        
+        mock_container3 = Mock()
+        mock_container3.name = "other-container"
+        mock_container3.location = "eastus"
+        mock_container3.instance_view.current_state.state = "Running"
+        
+        mock_client.container_groups.list_by_resource_group.return_value = [
+            mock_container1, mock_container2, mock_container3
+        ]
+        
+        # 测试查找
+        containers = await self.azure_manager._find_existing_containers()
+        
+        # 验证结果
+        assert len(containers) == 2
+        assert containers[0].name == "azraycontainer-20240101120000"
+        assert containers[1].name == "azraycontainer-20240101130000"
+    
+    @patch('src.azure_manager.ContainerInstanceManagementClient')
+    @pytest.mark.asyncio
+    async def test_cleanup_old_containers(self, mock_client_class):
+        """测试清理旧容器"""
+        # 模拟客户端
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+        self.azure_manager.container_client = mock_client
+        
+        # 模拟容器
+        mock_container1 = Mock()
+        mock_container1.name = "azraycontainer-old"
+        
+        mock_container2 = Mock()
+        mock_container2.name = "azraycontainer-current"
+        
+        # 模拟查找方法
+        async def mock_find():
+            return [mock_container1, mock_container2]
+        
+        self.azure_manager._find_existing_containers = mock_find
+        
+        # 测试清理，保留当前容器
+        await self.azure_manager._cleanup_old_containers(keep_current="azraycontainer-current")
+        
+        # 验证只删除了旧容器
+        mock_client.container_groups.begin_delete.assert_called_once_with(
+            self.config.azure_resource_group, "azraycontainer-old"
+        )
+    
+    @patch('src.azure_manager.ContainerInstanceManagementClient')
+    @pytest.mark.asyncio
+    async def test_create_new_container_instance(self, mock_client_class):
+        """测试创建新容器实例"""
+        # 模拟客户端
+        mock_client = Mock()
+        mock_client_class.return_value = mock_client
+        self.azure_manager.container_client = mock_client
+        
+        # 模拟配置方法
+        self.config.get_unique_container_name = Mock(return_value="azraycontainer-20240101140000")
+        
+        # 模拟创建操作
+        mock_operation = Mock()
+        mock_operation.result.return_value = Mock(name="azraycontainer-20240101140000")
+        mock_client.container_groups.begin_create_or_update.return_value = mock_operation
+        
+        # 测试创建
+        container_name = await self.azure_manager._create_new_container_instance()
+        
+        # 验证调用
+        mock_client.container_groups.begin_create_or_update.assert_called_once()
+        assert container_name == "azraycontainer-20240101140000"
