@@ -143,7 +143,7 @@ class V2RayManager:
             asyncio.create_task(self._forward_v2ray_logs())
 
             # 等待一下确保进程启动
-            await asyncio.sleep(2)
+            await asyncio.sleep(10)
 
             # 检查进程是否正常运行
             if self.process.poll() is not None:
