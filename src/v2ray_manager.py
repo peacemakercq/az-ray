@@ -251,7 +251,7 @@ class V2RayManager:
                 # 清理行尾并记录日志
                 line = line.strip()
                 if line:  # 只记录非空行
-                    log_func(f"[V2Ray] {line}")
+                    log_func(line)
                     
         except Exception as e:
             logger.warning(f"读取V2Ray日志流时出错: {e}")
