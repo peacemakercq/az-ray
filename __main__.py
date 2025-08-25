@@ -85,7 +85,9 @@ def main():
     # 设置日志
     setup_logging(args.verbose)
 
-    # 设置环境变量（如果需要）
+    # 设置环境变量
+    if args.verbose:
+        os.environ["VERBOSE"] = "true"
     if args.recreate:
         os.environ["RECREATE_RESOURCES"] = "true"
 

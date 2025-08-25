@@ -43,7 +43,8 @@ class V2RayManager:
         # 生成客户端配置
         client_config = {
             "log": {
-                "loglevel": "warning"
+                "loglevel": "info" if self.config.verbose else "warning",
+                "access": ""  # 禁用访问日志
             },
             "inbounds": [
                 {
@@ -160,8 +161,9 @@ class V2RayManager:
                 bufsize=1  # 行缓冲，确保实时输出
             )
 
-            # 启动日志转发任务
-            asyncio.create_task(self._forward_v2ray_logs())
+            # 启动日志转发任务（仅在verbose模式下）
+            if self.config.verbose:
+                asyncio.create_task(self._forward_v2ray_logs())
 
             # 等待一下确保进程启动（可通过V2RAY_WAIT_TIME环境变量控制）
             wait_time = int(os.getenv("V2RAY_WAIT_TIME", "10"))

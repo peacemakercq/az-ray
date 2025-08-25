@@ -35,6 +35,7 @@ class Config:
     socks5_port: int = 1080
     http_port: int = 1081
     health_check_interval: int = 600  # 10分钟
+    verbose: bool = False  # 详细日志输出
 
     # 转发域名列表
     domain_list: Optional[list[str]] = None
@@ -62,6 +63,7 @@ class Config:
         self.socks5_port = int(os.getenv("SOCKS5_PORT", self.socks5_port))
         self.http_port = int(os.getenv("HTTP_PORT", self.http_port))
         self.health_check_interval = int(os.getenv("HEALTH_CHECK_INTERVAL", self.health_check_interval))
+        self.verbose = os.getenv("VERBOSE", "false").lower() in ("true", "1", "yes")
 
         # 初始化转发域名列表
         self._initialize_domain_list()
