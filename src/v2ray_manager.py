@@ -128,7 +128,7 @@ class V2RayManager:
                     {
                         "type": "field",
                         "network": "tcp,udp",  # 匹配所有网络流量
-                        "outboundTag": "proxy"  # 默认走代理
+                        "outboundTag": "direct"  # 默认走代理
                     }
                 ]
             }
