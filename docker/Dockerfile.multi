@@ -67,12 +67,8 @@ RUN useradd -m -u 1000 azray && \
 # 切换到非root用户
 USER azray
 
-# 暴露SOCKS5和HTTP端口
-EXPOSE 1080 1081
-
 # 添加标签
-LABEL maintainer="AZ-Ray Development Team" \
-      version="1.0.0" \
+LABEL maintainer="peacemakercq" \
       description="Azure V2Ray Proxy Solution"
 
 # 启动应用

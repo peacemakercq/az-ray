@@ -107,6 +107,7 @@ class V2RayManager:
                             "geosite:twitter",
                             "geosite:facebook",
                             "geosite:github",
+                            "geosite:amazon",
                             "geosite:telegram",
                             "geosite:netflix",
                         ],

@@ -35,8 +35,9 @@ COPY __main__.py ./
 RUN useradd -m -u 1000 azray && chown -R azray:azray /app
 USER azray
 
-# 暴露SOCKS5和HTTP端口
-EXPOSE 1080 1081
+# 添加标签
+LABEL maintainer="peacemakercq" \
+      description="Azure V2Ray Proxy Solution"
 
 # 启动应用
 CMD ["python", "__main__.py"]
