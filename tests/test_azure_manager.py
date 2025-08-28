@@ -1,5 +1,7 @@
 import pytest
 import os
+import json
+import hashlib
 from unittest.mock import Mock, AsyncMock, patch
 from src.config import Config
 from src.azure_manager import AzureManager
@@ -60,7 +62,7 @@ class TestAzureManager:
         mock_azure_manager._ensure_resource_group = AsyncMock()
         mock_azure_manager._ensure_storage_account = AsyncMock()
         mock_azure_manager._ensure_file_share = AsyncMock()
-        mock_azure_manager._ensure_v2ray_config = AsyncMock()
+        mock_azure_manager._ensure_v2ray_config = AsyncMock(return_value=False)  # 返回布尔值
         mock_azure_manager._ensure_container_instance = AsyncMock()
 
         await mock_azure_manager.ensure_resources()
@@ -70,7 +72,7 @@ class TestAzureManager:
         mock_azure_manager._ensure_storage_account.assert_called_once()
         mock_azure_manager._ensure_file_share.assert_called_once()
         mock_azure_manager._ensure_v2ray_config.assert_called_once()
-        mock_azure_manager._ensure_container_instance.assert_called_once()
+        mock_azure_manager._ensure_container_instance.assert_called_once_with(False)  # 传入配置更新状态
 
     def test_generate_v2ray_config(self, mock_azure_manager):
         """测试V2Ray配置生成"""
@@ -238,3 +240,132 @@ class TestAzureManagerContainerOperations:
         # 验证调用
         mock_client.container_groups.begin_create_or_update.assert_called_once()
         assert container_name == "azraycontainer-20240101140000"
+
+
+class TestAzureManagerConfigValidation:
+    """Azure管理器配置验证测试"""
+
+    @pytest.fixture
+    def azure_manager(self, mock_config):
+        """Azure管理器实例"""
+        manager = AzureManager(mock_config)
+        manager.storage_account_key = "test-key"
+        return manager
+
+    @pytest.mark.asyncio
+    async def test_ensure_v2ray_config_no_update_needed(self, azure_manager):
+        """测试配置文件无需更新的情况"""
+        # 模拟当前配置与期望配置一致
+        expected_config = {"test": "config"}
+        azure_manager._generate_v2ray_config = Mock(return_value=expected_config)
+        azure_manager._get_current_config_from_storage = AsyncMock(return_value=expected_config)
+
+        with patch('src.azure_manager.ShareFileClient'):
+            result = await azure_manager._ensure_v2ray_config()
+
+        assert result is False  # 无更新
+        azure_manager._get_current_config_from_storage.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_ensure_v2ray_config_update_needed(self, azure_manager):
+        """测试配置文件需要更新的情况"""
+        # 模拟当前配置与期望配置不一致
+        current_config = {"test": "old_config"}
+        expected_config = {"test": "new_config"}
+        
+        azure_manager._generate_v2ray_config = Mock(return_value=expected_config)
+        azure_manager._get_current_config_from_storage = AsyncMock(return_value=current_config)
+
+        with patch('src.azure_manager.ShareFileClient') as mock_file_client:
+            mock_client = Mock()
+            mock_file_client.return_value = mock_client
+            
+            result = await azure_manager._ensure_v2ray_config()
+
+        assert result is True  # 有更新
+        mock_client.upload_file.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_ensure_v2ray_config_file_not_exists(self, azure_manager):
+        """测试配置文件不存在的情况"""
+        expected_config = {"test": "config"}
+        azure_manager._generate_v2ray_config = Mock(return_value=expected_config)
+        azure_manager._get_current_config_from_storage = AsyncMock(return_value=None)
+
+        with patch('src.azure_manager.ShareFileClient') as mock_file_client:
+            mock_client = Mock()
+            mock_file_client.return_value = mock_client
+            
+            result = await azure_manager._ensure_v2ray_config()
+
+        assert result is True  # 需要创建文件
+        mock_client.upload_file.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_get_current_config_from_storage_success(self, azure_manager):
+        """测试成功获取存储配置"""
+        config_data = {"test": "config"}
+        config_json = json.dumps(config_data)
+
+        with patch('src.azure_manager.ShareFileClient') as mock_file_client:
+            mock_client = Mock()
+            mock_file_client.return_value = mock_client
+            
+            # 模拟下载流
+            mock_stream = Mock()
+            mock_stream.readall.return_value = config_json.encode('utf-8')
+            mock_client.download_file.return_value = mock_stream
+            
+            result = await azure_manager._get_current_config_from_storage()
+
+        assert result == config_data
+
+    @pytest.mark.asyncio
+    async def test_get_current_config_from_storage_not_found(self, azure_manager):
+        """测试配置文件不存在"""
+        from azure.core.exceptions import ResourceNotFoundError
+
+        with patch('src.azure_manager.ShareFileClient') as mock_file_client:
+            mock_client = Mock()
+            mock_file_client.return_value = mock_client
+            mock_client.download_file.side_effect = ResourceNotFoundError("File not found")
+            
+            result = await azure_manager._get_current_config_from_storage()
+
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_is_container_location_valid(self, azure_manager):
+        """测试容器位置验证"""
+        # 模拟容器对象
+        container = Mock()
+        container.location = "eastus"
+        
+        # 测试位置匹配
+        azure_manager.config.azure_location = "eastus"
+        result = await azure_manager._is_container_location_valid(container)
+        assert result is True
+        
+        # 测试位置不匹配
+        azure_manager.config.azure_location = "westus"
+        result = await azure_manager._is_container_location_valid(container)
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_get_active_container_with_config_updated(self, azure_manager):
+        """测试配置更新时的容器检查"""
+        # 模拟容器列表
+        container = Mock()
+        container.name = "test-container"
+        container.location = "eastus"
+        
+        azure_manager._find_existing_containers = AsyncMock(return_value=[container])
+        azure_manager._is_container_location_valid = AsyncMock(return_value=True)
+        
+        # 测试配置已更新的情况
+        result = await azure_manager._get_active_container(config_updated=True)
+        assert result is None  # 应该返回None，需要重新创建
+        
+        # 测试配置未更新的情况
+        result = await azure_manager._get_active_container(config_updated=False)
+        assert result == container  # 应该返回容器对象

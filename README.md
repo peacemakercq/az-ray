@@ -7,6 +7,8 @@
 - 🌐 自动创建和管理Azure资源（Storage File + Container Instance）
 - 🔄 智能代理路由（使用GeoIP智能分流）
 - 📊 连接质量监控和自动重启
+- ✅ 智能容器验证（位置和配置一致性检查）
+- 🔇 可配置的日志级别（--verbose模式）
 - 🐳 Docker容器化部署
 - ⚙️ 开发容器支持
 - 🛠️ Makefile 自动化工具
@@ -58,6 +60,7 @@ AZURE_RESOURCE_GROUP=az-ray-rg
 AZURE_LOCATION=southeastasia
 SOCKS5_PORT=1080
 HEALTH_CHECK_INTERVAL=600  # 秒
+VERBOSE=false  # 设置为true启用详细日志
 
 # 域名文件路径（可选）
 DOMAIN_FILE=/path/to/domains.txt
@@ -117,8 +120,8 @@ pip install -r requirements.txt
 # 运行应用
 python __main__.py
 
-# 启用详细日志
-python __main__.py -v
+# 启用详细日志（包括V2Ray日志）
+python __main__.py --verbose
 
 # 重新创建Azure资源
 python __main__.py --recreate

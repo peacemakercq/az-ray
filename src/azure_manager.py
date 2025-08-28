@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import hashlib
 from typing import Optional, Dict, Any
 from azure.identity import ClientSecretCredential
 from azure.mgmt.containerinstance import ContainerInstanceManagementClient
@@ -101,11 +102,11 @@ class AzureManager:
         # 确保文件共享存在
         await self._ensure_file_share()
 
-        # 确保V2Ray配置文件存在
-        await self._ensure_v2ray_config()
+        # 确保V2Ray配置文件存在，并检查是否有更新
+        config_updated = await self._ensure_v2ray_config()
 
         # 确保容器实例存在
-        await self._ensure_container_instance()
+        await self._ensure_container_instance(config_updated)
 
         logger.info("所有Azure资源检查完成")
 
@@ -234,12 +235,11 @@ class AzureManager:
             logger.info("文件共享创建完成 (配额: 1GB)")
 
     @retry_with_backoff(max_attempts=3, base_delay=1.0)
-    async def _ensure_v2ray_config(self):
-        """确保V2Ray配置文件存在（总是覆盖）"""
+    async def _ensure_v2ray_config(self) -> bool:
+        """确保V2Ray配置文件存在并是最新的，返回是否有更新"""
         account_url = (
             f"https://{self.config.storage_account_name}.file.core.windows.net"
         )
-        logger.info("生成并上传V2Ray配置文件（覆盖模式）...")
 
         file_client = ShareFileClient(
             account_url=account_url,
@@ -248,13 +248,36 @@ class AzureManager:
             credential=self.storage_account_key,
         )
 
-        # 总是重新生成并上传配置文件
-        config_content = self._generate_v2ray_config()
-        config_json = json.dumps(config_content, indent=2)
-        config_bytes = config_json.encode("utf-8")
+        # 生成期望的配置内容
+        expected_config = self._generate_v2ray_config()
+        expected_config_json = json.dumps(expected_config, sort_keys=True)
+        expected_hash = hashlib.sha256(expected_config_json.encode('utf-8')).hexdigest()
+
+        # 检查当前存储中的配置
+        try:
+            current_config_content = await self._get_current_config_from_storage()
+            if current_config_content is not None:
+                current_config_json = json.dumps(current_config_content, sort_keys=True)
+                current_hash = hashlib.sha256(current_config_json.encode('utf-8')).hexdigest()
+                
+                if expected_hash == current_hash:
+                    logger.info(f"V2Ray配置文件已是最新 (哈希: {expected_hash[:16]}...)")
+                    return False  # 没有更新
+                else:
+                    logger.info(f"V2Ray配置文件需要更新 (当前: {current_hash[:16]}..., 期望: {expected_hash[:16]}...)")
+            else:
+                logger.info("V2Ray配置文件不存在，需要创建")
+        except Exception as e:
+            logger.warning(f"检查现有配置时出错: {e}，将重新上传配置")
+
+        # 上传新的配置文件
+        logger.info("正在上传V2Ray配置文件...")
+        config_json_formatted = json.dumps(expected_config, indent=2)
+        config_bytes = config_json_formatted.encode("utf-8")
 
         file_client.upload_file(data=config_bytes, length=len(config_bytes))
         logger.info(f"V2Ray配置文件上传完成，大小: {len(config_bytes)} bytes")
+        return True  # 有更新
 
     def _generate_v2ray_config(self) -> Dict[str, Any]:
         """生成V2Ray服务器配置"""
@@ -280,7 +303,7 @@ class AzureManager:
             "outbounds": [{"protocol": "freedom", "settings": {}}],
         }
 
-    async def _ensure_container_instance(self):
+    async def _ensure_container_instance(self, config_updated: bool = False):
         """确保容器实例存在"""
         # 如果是重新创建模式，直接创建新容器（旧的已经被清理了）
         if os.getenv("RECREATE_RESOURCES") == "true":
@@ -290,19 +313,20 @@ class AzureManager:
             return
 
         # 检查是否有现有的活跃容器
-        active_container = await self._get_active_container()
+        active_container = await self._get_active_container(config_updated)
         if active_container:
-            logger.info(f"找到活跃容器实例: {active_container.name}")
+            logger.info(f"找到符合要求的活跃容器实例: {active_container.name} (位置: {active_container.location})")
             
             # 检查容器状态
-            if not active_container.ip_address.ip:
-                logger.info("容器实例未运行，创建新的容器实例...")
+            if not active_container.ip_address or not active_container.ip_address.ip:
+                logger.info("容器实例未分配IP地址，创建新的容器实例...")
                 new_container_name = await self._create_new_container_instance()
                 # 清理旧容器
                 await self._cleanup_old_containers(keep_current=new_container_name)
                 self.config.container_group_name = new_container_name
             else:
                 # 使用现有的活跃容器
+                logger.info(f"复用现有容器实例，IP: {active_container.ip_address.ip}")
                 self.config.container_group_name = active_container.name
         else:
             logger.info("没有找到现有容器实例，正在创建新的...")
@@ -356,15 +380,59 @@ class AzureManager:
             logger.warning(f"查找现有容器时出错: {e}")
             return []
 
-    async def _get_active_container(self):
-        """获取当前活跃的容器实例（最新创建的）"""
+    async def _get_active_container(self, config_updated: bool = False):
+        """获取当前活跃且符合要求的容器实例"""
         containers = await self._find_existing_containers()
         if not containers:
             return None
         
         # 按名称排序，返回最新的（因为名称包含时间戳）
         containers.sort(key=lambda x: x.name, reverse=True)
-        return containers[0]
+        
+        # 检查最新的容器是否符合要求
+        latest_container = containers[0]
+        
+        # 检查1：位置是否匹配
+        if not await self._is_container_location_valid(latest_container):
+            logger.info(f"容器 {latest_container.name} 位置不匹配 "
+                        f"(当前: {latest_container.location}, 期望: {self.config.azure_location})，需要重新创建")
+            return None
+            
+        # 检查2：如果配置文件有更新，需要重新创建容器
+        if config_updated:
+            logger.info(f"容器 {latest_container.name} 配置已更新，需要重新创建")
+            return None
+            
+        logger.info(f"容器 {latest_container.name} 符合要求，可以复用")
+        return latest_container
+
+    async def _is_container_location_valid(self, container) -> bool:
+        """检查容器是否在指定的location"""
+        return container.location == self.config.azure_location
+
+    async def _get_current_config_from_storage(self) -> Optional[Dict[str, Any]]:
+        """从Azure存储中获取当前的配置文件内容"""
+        try:
+            file_client = ShareFileClient(
+                account_url=f"https://{self.config.storage_account_name}.file.core.windows.net",
+                share_name=self.config.storage_file_share_name,
+                file_path=self.config.storage_file_name,
+                credential=self.storage_account_key,
+            )
+            
+            # 下载配置文件
+            download_stream = file_client.download_file()
+            config_content = download_stream.readall().decode('utf-8')
+            
+            # 解析JSON
+            return json.loads(config_content)
+            
+        except ResourceNotFoundError:
+            logger.info("存储中未找到配置文件")
+            return None
+        except Exception as e:
+            logger.warning(f"获取存储配置文件时出错: {e}")
+            return None
 
     async def _cleanup_old_containers(self, keep_current: Optional[str] = None):  # type: ignore[assignment]
         """清理旧的容器实例，保留当前指定的容器"""
